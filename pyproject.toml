@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gerenciador-ferias"
+version = "3.9.1"
+description = "Aplicação CLI portátil para gerenciamento de férias de equipes"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Thiago Cavalcante"}]
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Console",
+]
+dependencies = []
+
+[project.scripts]
+gerenciador-ferias = "app:main"
+
+[tool.setuptools]
+py-modules = [
+    "app",
+    "business",
+    "core",
+    "dashboard",
+    "database",
+    "menus",
+    "runtime",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

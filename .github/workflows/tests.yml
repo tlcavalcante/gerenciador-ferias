@@ -1,0 +1,90 @@
+name: Testes e build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar ferramentas de teste
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Compilar módulos
+        run: python -m compileall -q .
+
+      - name: Executar testes
+        run: python -m pytest -q
+
+      - name: Verificar layout portátil
+        run: bash scripts/verify-linux.sh
+
+  build:
+    name: Build do pacote
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Instalar ferramenta de build
+        run: python -m pip install --upgrade pip build
+
+      - name: Construir wheel e sdist
+        run: python -m build
+
+      - name: Verificar artefatos
+        run: ls -lh dist/
+
+      - name: Testar instalação em ambiente limpo
+        run: |
+          python -m venv /tmp/gerenciador-ferias-venv
+          /tmp/gerenciador-ferias-venv/bin/python -m pip install dist/*.whl
+          /tmp/gerenciador-ferias-venv/bin/python -c "import app, database, business; print('Importação do wheel: OK')"
+
+  security:
+    name: Segurança
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          license-check: false
+
+      - name: Verificar arquivos Python
+        run: |
+          if grep -RInE 'admin/admin123|password[[:space:]]*=[[:space:]]*["'"']admin123|SECRET_KEY[[:space:]]*=' --include='*.py' .; then
+            echo 'Possível credencial ou segredo encontrado.'
+            exit 1
+          fi
