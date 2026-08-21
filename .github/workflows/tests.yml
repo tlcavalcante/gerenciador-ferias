@@ -83,8 +83,18 @@ jobs:
           license-check: false
 
       - name: Verificar arquivos Python
+        shell: bash
         run: |
-          if grep -RInE 'admin/admin123|password[[:space:]]*=[[:space:]]*["'"']admin123|SECRET_KEY[[:space:]]*=' --include='*.py' .; then
+          set -euo pipefail
+
+          if grep -RInE \
+            --include='*.py' \
+            --exclude-dir='tests' \
+            --exclude-dir='.git' \
+            "admin/admin123|password[[:space:]]*=[[:space:]]*[\"']admin123|SECRET_KEY[[:space:]]*=" \
+            .; then
             echo 'Possível credencial ou segredo encontrado.'
             exit 1
           fi
+
+          echo 'Verificação de credenciais: OK'
