@@ -1,30 +1,14 @@
-# Checklist de publicação
+# Checklist de release — versão 4.3.9
 
-## Antes do primeiro push
+- [x] Script autônomo incluído no repositório.
+- [x] Documentação de operação, atualização, testes e segurança incluída.
+- [x] Compilação sintática verificada durante a preparação.
+- [ ] Suíte automatizada executada em ambiente limpo.
+- [ ] Checklist funcional executado em homologação.
+- [ ] Backup e restauração testados.
+- [ ] Compatibilidade com as versões de Python suportadas verificada.
+- [ ] Revisão final dos arquivos publicados.
+- [ ] CI do GitHub concluída com sucesso.
+- [ ] Release/tag criada após aprovação.
 
-- [ ] Remover qualquer `dados_ferias.db` local.
-- [ ] Remover todos os `backup_*.db` locais.
-- [ ] Executar `python -m pytest -q`.
-- [ ] Executar `bash scripts/verify-linux.sh`.
-- [ ] Executar `python -m compileall -q .`.
-- [ ] Conferir `git status`.
-- [ ] Conferir que não há credenciais, dados pessoais ou dados institucionais.
-
-## GitHub
-
-- [ ] Criar repositório público.
-- [ ] Configurar branch `main`.
-- [ ] Habilitar Issues.
-- [ ] Habilitar Pull Requests.
-- [ ] Configurar proteção da branch `main`.
-- [ ] Tornar o workflow de testes obrigatório antes do merge.
-- [ ] Criar o primeiro Release somente após CI verde.
-
-## Release
-
-- [ ] Definir versão final.
-- [ ] Atualizar `pyproject.toml`.
-- [ ] Atualizar `CHANGELOG.md`.
-- [ ] Conferir README.
-- [ ] Criar tag Git.
-- [ ] Publicar Release.
+**Nota:** compilação sintática não comprova o funcionamento integral da aplicação. Não marque itens pendentes sem evidência.
