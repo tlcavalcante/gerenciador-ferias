@@ -1,38 +1,22 @@
-# Arquitetura — Gerenciador de Férias v3.9.1
+# Arquitetura
 
-## Princípio arquitetural
+A versão 4.3.0 é uma aplicação CLI autônoma em `gerenciador_ferias.py`. A lógica de interface, regras de férias, autenticação, persistência SQLite, relatórios, banco de horas e backups está no arquivo principal para permitir distribuição simples sem dependências externas.
 
-A aplicação é modular internamente, mas distribuída como uma pasta autocontida. Não existe dependência de um diretório de instalação, `cwd`, XDG ou variável de ambiente para localizar os dados.
+## Persistência
 
-## Módulos
+O SQLite mantém tabelas de setores, subsetores, vínculos, funcionários, férias, regras, configurações, usuários e lançamentos de banco de horas. O banco é inicializado por `_init_banco()`.
 
-- `gerenciador_ferias.py`: launcher executável.
-- `app.py`: composição e inicialização.
-- `core.py`: estado, configuração, interface comum e localização do diretório da aplicação.
-- `runtime.py`: fachada do núcleo para os demais módulos.
-- `database.py`: persistência SQLite e migrações.
-- `business.py`: regras de férias e cálculos.
-- `menus.py`: interface interativa.
-- `dashboard.py`: painel e gráficos.
+O diretório de dados é resolvido nesta ordem:
+1. `GERENCIADOR_FERIAS_DATA_DIR`, quando definido;
+2. `$XDG_DATA_HOME/gerenciador-ferias`, quando `XDG_DATA_HOME` estiver definido;
+3. `~/.local/share/gerenciador-ferias`.
 
-## Localização dos dados
+Os backups são cópias consistentes criadas pela API de backup do SQLite e ficam no subdiretório `backups/`.
 
-`core.py` determina:
+## Segurança
 
-```python
-APP_DIR = Path(__file__).resolve().parent
-BANCO_DADOS = APP_DIR / "dados_ferias.db"
-BACKUP_DIR = APP_DIR
-```
+As senhas novas são derivadas com PBKDF2-HMAC-SHA256 e salt aleatório. Não há credencial administrativa padrão; o administrador é criado na primeira execução. A validação de entradas e as consultas SQL parametrizadas devem ser mantidas nos novos recursos.
 
-Assim, se a pasta estiver em `/opt/gerenciador-ferias`, o banco será `/opt/gerenciador-ferias/dados_ferias.db`, independentemente de onde o comando for executado.
+## Compatibilidade
 
-## Distribuição
-
-A forma operacional recomendada é copiar a pasta inteira para o destino desejado e executar:
-
-```bash
-python3 gerenciador_ferias.py
-```
-
-O `pyproject.toml` continua disponível para build e testes de empacotamento, mas não é requisito para executar a aplicação de forma portátil.
+Os módulos históricos permanecem disponíveis para testes de regressão. O comando instalado pelo pacote aponta para `gerenciador_ferias:main`.

@@ -1,125 +1,63 @@
 # Gerenciador de Férias
 
-Aplicação CLI em Python para gerenciamento de férias de equipes, com SQLite, autenticação, regras configuráveis, relatórios, painel e backup.
+Aplicação de linha de comando (CLI) em Python para gerenciamento local de férias de equipes, com SQLite, autenticação, regras configuráveis, relatórios, painel, validação, calendário, backup e Banco de Horas.
 
-## Modelo de execução portátil
-
-O projeto foi desenhado para funcionar como uma aplicação autocontida. O banco de dados e os arquivos de runtime ficam no **mesmo diretório dos arquivos do programa**.
-
-O diretório de trabalho atual (`cwd`) não é utilizado para localizar os dados. Portanto, o programa pode ser executado de qualquer ponto do sistema:
-
-```bash
-cd /tmp
-python3 /opt/gerenciador-ferias/gerenciador_ferias.py
-```
-
-O banco será criado em:
-
-```text
-/opt/gerenciador-ferias/dados_ferias.db
-```
-
-e os backups em arquivos `backup_*.db` no mesmo diretório.
-
-Não há dependência de `XDG_DATA_HOME`, `GERENCIADOR_FERIAS_DATA_DIR` ou de um diretório de dados externo.
-
-## Estrutura para uso
-
-Para uma instalação simples, copie a pasta inteira para o local desejado:
-
-```text
-gerenciador-ferias/
-├── gerenciador_ferias.py
-├── app.py
-├── business.py
-├── core.py
-├── dashboard.py
-├── database.py
-├── menus.py
-├── runtime.py
-├── dados_ferias.db          # criado na primeira execução
-├── backup_YYYYMMDD_*.db     # criados pelo sistema
-└── ...
-```
-
-O banco não deve ser versionado no Git.
+**Versão publicada: 4.3.0**
 
 ## Requisitos
 
-- Linux/Unix POSIX
-- Python 3.10 ou superior
-- SQLite disponível na biblioteca padrão do Python
-- Terminal UTF-8 recomendado
+- Linux/Unix com terminal UTF-8 recomendado
+- Python 3.9 ou superior
+- SQLite incluído na biblioteca padrão do Python
+- Nenhuma dependência Python externa para execução
 
-Não existem dependências Python de execução além da biblioteca padrão.
+## Execução
 
-## Execução direta
-
-A forma recomendada é executar o launcher:
+Na pasta do projeto:
 
 ```bash
 python3 gerenciador_ferias.py
 ```
 
-Também é possível executar a partir de outro diretório usando o caminho absoluto:
+O programa solicita a criação do primeiro usuário administrador; não há senha administrativa padrão.
 
-```bash
-python3 /opt/gerenciador-ferias/gerenciador_ferias.py
-```
+## Dados e backups
 
-O aplicativo continua usando a própria pasta para localizar o banco e os demais dados.
+Por padrão, banco de dados e backups ficam em `~/.local/share/gerenciador-ferias/`. É possível definir um diretório alternativo por `GERENCIADOR_FERIAS_DATA_DIR`; na ausência dele, o programa considera `XDG_DATA_HOME` e usa o subdiretório `gerenciador-ferias`.
 
-## Instalação opcional como pacote
+- Banco: `dados_ferias.db`
+- Backups: subdiretório `backups/`
 
-O projeto possui `pyproject.toml` para empacotamento e CI. Essa modalidade é voltada a desenvolvimento/distribuição Python. Para uma instalação operacional simples e autocontida, prefira a execução direta da pasta descrita acima.
+Para preservar a privacidade e a integridade dos dados, não publique o banco de dados, backups ou registros reais de funcionários no Git.
 
-## Primeira execução
+## Funcionalidades da versão 4.3.0
 
-Na primeira execução, o sistema solicita a criação do administrador inicial. Não existe senha administrativa padrão.
-
-As senhas novas são armazenadas usando PBKDF2-HMAC-SHA256 com salt. Hashes SHA-256 legados são aceitos somente para migração e convertidos após autenticação bem-sucedida.
-
-## Backup
-
-Os backups são bancos SQLite independentes e ficam no mesmo diretório da aplicação:
-
-```text
-backup_YYYYMMDD_HHMMSS_ffffff.db
-```
-
-O sistema utiliza a API de backup do SQLite para criar cópias consistentes.
+- Gestão de funcionários, setores, subsetores, vínculos e períodos de férias
+- Regras configuráveis, validação, calendário, painel e relatórios
+- Autenticação local e armazenamento de senhas com hash PBKDF2-HMAC-SHA256 e salt
+- Banco de Horas com lançamentos em formato `HH:MM`, saldos positivos/negativos, extrato, relatórios, ajustes e ranking de alertas
+- Backup consistente do SQLite e exportação de cópias
+- Interface CLI com opções de acessibilidade visual e saída sem cores ANSI
 
 ## Testes
 
 ```bash
-python3 -m pytest
-```
-
-Para verificar a execução portátil:
-
-```bash
+python3 -m pip install pytest
+python3 -m pytest -q
 bash scripts/verify-linux.sh
 ```
 
-## Repositório Git
+## Estrutura
 
-O repositório contém somente código, testes e documentação. O arquivo `dados_ferias.db` é criado pela aplicação e está explicitamente excluído do Git. Nunca publique bancos de dados, backups ou dados reais de funcionários.
-
-## CI
-
-O repositório possui GitHub Actions para testar múltiplas versões do Python, executar testes, verificar compilação e construir o pacote. A configuração segue o modelo atual de `pyproject.toml` e `project.scripts` recomendado pela documentação oficial de empacotamento Python.
+O arquivo `gerenciador_ferias.py` é a aplicação autônoma da versão 4.3.0. Os módulos históricos `app.py`, `business.py`, `core.py`, `dashboard.py`, `database.py`, `menus.py` e `runtime.py` são mantidos no repositório para compatibilidade e testes de regressão.
 
 ## Segurança
 
-Consulte [SECURITY.md](SECURITY.md).
-
-## Arquitetura
-
-Consulte [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## Compatibilidade Linux
-
-Consulte [LINUX-COMPATIBILITY.md](LINUX-COMPATIBILITY.md).
+- Não existe conta ou senha administrativa padrão.
+- Defina uma senha exclusiva e forte ao criar o administrador.
+- Armazene o banco e os backups em diretório com permissões restritas.
+- Não versionar banco de dados, backups, credenciais reais ou dados pessoais.
+- Hashes legados são tratados para permitir migração após autenticação válida.
 
 ## Licença
 
