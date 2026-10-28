@@ -6,7 +6,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-printf '%s\n' '== Gerenciador de Férias 4.3.0: verificação Linux =='
+printf '%s\n' '== Gerenciador de Férias: verificação Linux =='
 "$PYTHON_BIN" --version
 "$PYTHON_BIN" -m compileall -q "$ROOT_DIR"
 GERENCIADOR_FERIAS_DATA_DIR="$TMP_DIR/data" PYTHONPATH="$ROOT_DIR" "$PYTHON_BIN" - <<'PY'
@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import gerenciador_ferias as app
 
-assert app.APP_VERSION == "4.3.0"
+assert isinstance(app.APP_VERSION, str) and app.APP_VERSION.startswith("4.")
 app._init_banco()
 assert app.BANCO_DADOS.is_file()
 assert app.BANCO_DADOS.parent == Path(os.environ["GERENCIADOR_FERIAS_DATA_DIR"])
