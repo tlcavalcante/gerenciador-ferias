@@ -947,7 +947,6 @@ def ord_setores(d):
     ns = list(d['setores'].keys())
     rev = _rev(d)
     return sorted(ns, key=lambda x: x.lower(), reverse=rev) if d.get('config', CONFIG_PADRAO).get('ordem_setores', 'nome') == 'nome' else list(reversed(ns)) if rev else ns
-
 def ord_subs(d, setor):
     subs = list(d['setores'].get(setor, {}).get('subsetores', []))
     rev = _rev(d)
