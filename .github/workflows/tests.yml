@@ -11,7 +11,7 @@ permissions:
 jobs:
   tests:
     name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -40,7 +40,7 @@ jobs:
 
   build:
     name: Build do pacote
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: tests
 
     steps:
@@ -69,7 +69,7 @@ jobs:
 
   security:
     name: Segurança
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
