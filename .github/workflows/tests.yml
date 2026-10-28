@@ -75,13 +75,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Dependency Review
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v5
-        with:
-          fail-on-severity: high
-          license-check: false
-
+      # Dependency Review requer Dependency Graph habilitado no GitHub.
+      # O projeto não declara dependências externas de execução; a verificação
+      # estática abaixo continua ativa para procurar credenciais acidentais.
       - name: Verificar arquivos Python
         shell: bash
         run: |
