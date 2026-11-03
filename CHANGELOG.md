@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 4.4.0 — Identificação no agendamento e férias coincidentes
+
+- Apresenta nome, setor, subsetor e vínculo do funcionário na mesma linha durante a seleção para agendamento.
+- Adiciona a opção 13 ao menu de relatórios para localizar períodos de férias coincidentes.
+- Permite consultar toda a empresa, um setor, um subsetor ou uma seleção de funcionários.
+- Exibe os funcionários envolvidos, seus setores e subsetores, os períodos originais, o intervalo de coincidência e a quantidade de dias sobrepostos.
+- Considera as datas inicial e final no cálculo dos dias coincidentes.
+
 ## 4.3.9 — Organização de menus e relatórios do Banco de Horas
 
 - Remove a opção independente “Painel de férias” do menu principal e renumera as opções restantes.
