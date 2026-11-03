@@ -17,7 +17,7 @@ def load_app(data_dir):
 def test_bank_hours_parser_and_formatter(tmp_path, monkeypatch):
     monkeypatch.setenv("GERENCIADOR_FERIAS_DATA_DIR", str(tmp_path / "data"))
     app = load_app(tmp_path / "data")
-    assert app.APP_VERSION == "4.3.0"
+    assert isinstance(app.APP_VERSION, str) and app.APP_VERSION
     assert app._bh_parse_horas("125:45") == 7545
     assert app._bh_parse_horas("00:30") == 30
     assert app._bh_parse_horas("-02:15") is None

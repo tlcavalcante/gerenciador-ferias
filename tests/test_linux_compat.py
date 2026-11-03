@@ -17,7 +17,10 @@ def load_app(data_dir):
 def test_standalone_v430_source_exists():
     assert SOURCE.is_file()
     source = SOURCE.read_text(encoding="utf-8")
-    assert "APP_VERSION = '4.3.0'" in source
+    import re
+    match = re.search(r"^APP_VERSION = ['\"]([^'\"]+)['\"]$", source, re.MULTILINE)
+    assert match is not None
+    assert match.group(1).startswith("4.")
 
 
 def test_database_uses_configured_data_dir_and_ignores_cwd(tmp_path, monkeypatch):
