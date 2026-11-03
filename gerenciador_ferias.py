@@ -3,7 +3,7 @@
 """
 Gerenciador de Férias — aplicação CLI para equipes Linux.
 
-Versão: 4.3.9
+Versão: 4.4.0
 
 Aplicação local, sem dependências externas, baseada em SQLite. O programa
 mantém o histórico de férias, regras, usuários, relatórios, validações,
@@ -43,7 +43,7 @@ for _locale_name in ('pt_BR.UTF-8', 'pt_BR'):
     except locale.Error:
         continue
 APP_NAME = 'gerenciador-ferias'
-APP_VERSION = '4.3.9'
+APP_VERSION = '4.4.0'
 
 def _data_dir() -> Path:
     configured = os.environ.get('GERENCIADOR_FERIAS_DATA_DIR')
@@ -2709,7 +2709,7 @@ def agendar_ferias(d):
     titulo_box(t('fer_agendar'))
     _lvz()
     fundo()
-    func = sel_func(d)
+    func = sel_func(d, setor_mesma_linha=True)
     if not func:
         return
     v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
@@ -2843,7 +2843,7 @@ def ver_calendario(d):
 
 def menu_relatorios(d):
     while True:
-        _render_menu(t('rel_titulo'), [(1, t('rel_pa_menu')), (2, t('rel_saldo')), (3, t('rel_individual')), (4, t('rel_multi')), (5, t('rel_periodo')), (6, t('rel_geral')), (7, t('rel_setor')), (8, t('rel_sub')), (9, t('rel_situacao')), (10, t('rel_vencidas')), (11, t('rel_ano')), (12, 'Relatórios do Banco de Horas')], rodape=[(0, t('voltar'))])
+        _render_menu(t('rel_titulo'), [(1, t('rel_pa_menu')), (2, t('rel_saldo')), (3, t('rel_individual')), (4, t('rel_multi')), (5, t('rel_periodo')), (6, t('rel_geral')), (7, t('rel_setor')), (8, t('rel_sub')), (9, t('rel_situacao')), (10, t('rel_vencidas')), (11, t('rel_ano')), (12, 'Relatórios do Banco de Horas'), (13, 'Férias coincidentes')], rodape=[(0, t('voltar'))])
         op = inp(t('opcao')).strip()
         if op == '1':
             rel_por_periodo_aquisitivo(d)
@@ -2869,10 +2869,156 @@ def menu_relatorios(d):
             rel_por_ano_civil(d)
         elif op == '12':
             bh_relatorio(d)
+        elif op == '13':
+            rel_ferias_coincidentes(d)
         elif op == '0':
             break
         else:
             flash(t('invalido'), erro=True)
+
+
+def rel_ferias_coincidentes(d):
+    """Compara períodos de férias de funcionários distintos no escopo escolhido."""
+    todos = ord_funcs(d)
+    if len(todos) < 2:
+        flash('São necessários pelo menos dois funcionários cadastrados.', erro=True)
+        return
+
+    limpar()
+    titulo_box('FÉRIAS COINCIDENTES')
+    _lvz()
+    _ln('  1. Toda a empresa')
+    _ln('  2. Por setor')
+    _ln('  3. Por subsetor')
+    _ln('  4. Funcionários selecionados')
+    _dleve()
+    _ln(f"  0. {t('voltar')}")
+    fundo()
+    escopo = inp(t('opcao')).strip()
+
+    if escopo in ('0', ''):
+        return
+    if escopo == '1':
+        base = todos
+        descricao = 'Toda a empresa'
+    elif escopo == '2':
+        setor = sel_setor(d)
+        if not setor:
+            return
+        base = [f for f in todos if f.get('setor') == setor]
+        descricao = f'Setor: {setor}'
+    elif escopo == '3':
+        setor = sel_setor(d)
+        if not setor:
+            return
+        subsetor = sel_sub(d, setor)
+        if not subsetor:
+            return
+        base = [f for f in todos if f.get('setor') == setor and f.get('subsetor') == subsetor]
+        descricao = f'Setor: {setor} / Subsetor: {subsetor}'
+    elif escopo == '4':
+        base = _tela_selecao_funcionarios(d)
+        if not base:
+            return
+        descricao = 'Funcionários selecionados'
+    else:
+        flash(t('invalido'), erro=True)
+        return
+
+    # Remove duplicidades de cadastro sem descartar funcionários sem identificador.
+    base_unica = []
+    vistos = set()
+    for func in base:
+        identidade = func.get('_id')
+        chave = ('id', identidade) if identidade is not None else ('obj', id(func))
+        if chave not in vistos:
+            vistos.add(chave)
+            base_unica.append(func)
+    base = ord_funcs(d, base_unica)
+
+    conflitos = []
+    periodos_validos = 0
+    for func in base:
+        for ferias in func.get('ferias', []) or []:
+            inicio = conv_data(ferias.get('inicio', ''))
+            fim = conv_data(ferias.get('fim', ''))
+            if inicio and fim and inicio <= fim:
+                periodos_validos += 1
+
+    for indice, func_a in enumerate(base):
+        for func_b in base[indice + 1:]:
+            for fer_a in func_a.get('ferias', []) or []:
+                ini_a = conv_data(fer_a.get('inicio', ''))
+                fim_a = conv_data(fer_a.get('fim', ''))
+                if not ini_a or not fim_a or ini_a > fim_a:
+                    continue
+                for fer_b in func_b.get('ferias', []) or []:
+                    ini_b = conv_data(fer_b.get('inicio', ''))
+                    fim_b = conv_data(fer_b.get('fim', ''))
+                    if not ini_b or not fim_b or ini_b > fim_b:
+                        continue
+                    if sobrepoem(ini_a, fim_a, ini_b, fim_b):
+                        inicio_comum = max(ini_a, ini_b)
+                        fim_comum = min(fim_a, fim_b)
+                        conflitos.append({
+                            'a': func_a,
+                            'b': func_b,
+                            'fer_a': fer_a,
+                            'fer_b': fer_b,
+                            'inicio': inicio_comum,
+                            'fim': fim_comum,
+                            'dias': (fim_comum - inicio_comum).days + 1,
+                        })
+
+    conflitos.sort(key=lambda item: (
+        item['inicio'], item['fim'],
+        item['a'].get('nome', '').casefold(),
+        item['b'].get('nome', '').casefold(),
+    ))
+
+    def resumo():
+        _lnd('Escopo consultado', descricao)
+        _lnd('Funcionários analisados', str(len(base)))
+        _lnd('Períodos válidos analisados', str(periodos_validos))
+        _lnd('Sobreposições encontradas', str(len(conflitos)))
+
+    def linhas(item):
+        func_a, func_b = item['a'], item['b']
+        return [[
+            func_a.get('nome', '—'),
+            f"{func_a.get('setor', '—')} / {func_a.get('subsetor', '—')}",
+            f"{item['fer_a'].get('inicio', '—')} a {item['fer_a'].get('fim', '—')}",
+            func_b.get('nome', '—'),
+            f"{func_b.get('setor', '—')} / {func_b.get('subsetor', '—')}",
+            f"{item['fer_b'].get('inicio', '—')} a {item['fer_b'].get('fim', '—')}",
+            item['inicio'].strftime('%d/%m/%Y'),
+            item['fim'].strftime('%d/%m/%Y'),
+            str(item['dias']),
+        ]]
+
+    if not conflitos:
+        limpar()
+        titulo_box('FÉRIAS COINCIDENTES')
+        _lvz()
+        _lnd('Escopo consultado', descricao)
+        _lnd('Funcionários analisados', str(len(base)))
+        _lnd('Períodos válidos analisados', str(periodos_validos))
+        _dleve()
+        _ln('Nenhuma coincidência de férias encontrada.', 'center')
+        fundo()
+        pausar()
+        return
+
+    paginar_tabela(
+        d,
+        'RELATÓRIO DE FÉRIAS COINCIDENTES',
+        conflitos,
+        ['Funcionário 1', 'Setor / Subsetor 1', 'Período 1',
+         'Funcionário 2', 'Setor / Subsetor 2', 'Período 2',
+         'Coincidência início', 'Coincidência fim', 'Dias'],
+        linhas,
+        resumo,
+    )
 
 def rel_por_periodo_aquisitivo(d):
     limpar()
