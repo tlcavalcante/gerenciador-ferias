@@ -1,4 +1,4 @@
-# Gerenciador de Férias — versão 4.3.9
+# Gerenciador de Férias — versão 4.4.0
 
 Aplicação local de linha de comando (CLI), em Python, para gestão de férias de equipes e Banco de Horas, com persistência SQLite.
 
@@ -23,7 +23,7 @@ A localização dos dados é determinada nesta ordem: `GERENCIADOR_FERIAS_DATA_D
 
 **Não publique o banco de dados, backups, exportações com dados reais de funcionários nem credenciais no Git.** Antes de atualizar, faça backup e siga [docs/ATUALIZACAO.md](docs/ATUALIZACAO.md).
 
-## Funcionalidades da versão 4.3.9
+## Funcionalidades da versão 4.4.0
 
 - Gestão de funcionários, setores, subsetores e períodos de férias.
 - Regras de férias, validações, calendário e relatórios.
@@ -34,6 +34,10 @@ A localização dos dados é determinada nesta ordem: `GERENCIADOR_FERIAS_DATA_D
 - Preferência persistente para ocultar ou exibir colaboradores com saldo zerado.
 - Destaque em vermelho para saldos negativos e saldos que atingem ou ultrapassam o limite crítico configurado.
 - Menus reorganizados, com numeração sequencial, e funções de validação, configurações e administração agrupadas.
+
+- Seleção de funcionário no agendamento com nome, setor, subsetor e vínculo apresentados na mesma linha.
+- Consulta de coincidências entre períodos de férias, com filtros por empresa, setor, subsetor ou funcionários selecionados.
+- Identificação dos colaboradores envolvidos, períodos originais, intervalo coincidente e total de dias de sobreposição.
 
 ## Documentação
 

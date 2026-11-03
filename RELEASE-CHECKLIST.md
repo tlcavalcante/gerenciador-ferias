@@ -1,4 +1,4 @@
-# Checklist de release — versão 4.3.9
+# Checklist de release — versão 4.4.0
 
 - [x] Script autônomo incluído no repositório.
 - [x] Documentação de operação, atualização, testes e segurança incluída.
