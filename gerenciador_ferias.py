@@ -3,7 +3,7 @@
 """
 Gerenciador de Férias — aplicação CLI para equipes Linux.
 
-Versão: 4.3.9
+Versão: 4.8.2
 
 Aplicação local, sem dependências externas, baseada em SQLite. O programa
 mantém o histórico de férias, regras, usuários, relatórios, validações,
@@ -43,7 +43,7 @@ for _locale_name in ('pt_BR.UTF-8', 'pt_BR'):
     except locale.Error:
         continue
 APP_NAME = 'gerenciador-ferias'
-APP_VERSION = '4.3.9'
+APP_VERSION = '4.8.2'
 
 def _data_dir() -> Path:
     configured = os.environ.get('GERENCIADOR_FERIAS_DATA_DIR')
@@ -66,23 +66,26 @@ SESSAO = {'login': None, 'nome': None, 'nivel': None}
 # Tema visual da interface CLI
 # ---------------------------------------------------------------------------
 # Paleta baseada em azul/teal, com contraste moderado para uso prolongado.
-# Hierarquia: bordas azul, títulos ciano, opções claras, entradas azul-claro,
+# Hierarquia: bordas azuis, títulos ciano, destaques violeta, entradas azul-claro,
 # mensagens de sucesso verde, alerta amarelo e erro vermelho.
 # Pode ser desativada com NO_COLOR=1 ou automaticamente em terminais sem ANSI.
 RESET = '\x1b[0m'
 BOLD = '\x1b[1m'
 DIM = '\x1b[2m'
 FG = {
-    'text': '\x1b[38;5;252m',
+    'text': '\x1b[38;5;255m',
     'muted': '\x1b[38;5;245m',
     'border': '\x1b[38;5;39m',
-    'title': '\x1b[1;38;5;45m',
-    'menu': '\x1b[38;5;255m',
-    'accent': '\x1b[38;5;51m',
-    'success': '\x1b[38;5;78m',
-    'warning': '\x1b[38;5;220m',
-    'error': '\x1b[38;5;203m',
-    'input': '\x1b[38;5;81m',
+    'title': '\x1b[1;38;5;51m',
+    'menu': '\x1b[38;5;252m',
+    'accent': '\x1b[1;38;5;45m',
+    'success': '\x1b[1;38;5;82m',
+    'warning': '\x1b[1;38;5;220m',
+    'error': '\x1b[1;38;5;196m',
+    'input': '\x1b[1;38;5;117m',
+    'purple': '\x1b[1;38;5;141m',
+    'orange': '\x1b[1;38;5;214m',
+    'cyan': '\x1b[1;38;5;51m',
 }
 
 def _cores_ativas():
@@ -102,6 +105,7 @@ def _c_success(texto): return _c(texto, 'success', True)
 def _c_warning(texto): return _c(texto, 'warning', True)
 def _c_error(texto): return _c(texto, 'error', True)
 def _c_input(texto): return _c(texto, 'input', True)
+def _c_accent(texto): return _c(texto, 'accent', True)
 
 def _colorize_line(texto):
     texto = str(texto)
@@ -355,13 +359,13 @@ def _capturar(fn, *args, **kwargs):
 
 def topo():
     l = _larg()
-    print(_recuo() + _c_border('╭' + '─' * (l - 2) + '╮'))
+    print(_recuo() + _c_border('╭' + '━' * (l - 2) + '╮'))
     _UI['last'] = 'T'
 
 
 def fundo():
     l = _larg()
-    print(_recuo() + _c_border('╰' + '─' * (l - 2) + '╯'))
+    print(_recuo() + _c_border('╰' + '━' * (l - 2) + '╯'))
     _UI['last'] = 'F'
 
 
@@ -373,7 +377,7 @@ def _div():
 
 def titulo_box(txt):
     topo()
-    _ln(_c_title(str(txt).strip().upper()), 'center')
+    _ln(_c_title('◆  ' + str(txt).strip().upper() + '  ◆'), 'center')
     _div()
 
 
@@ -444,26 +448,38 @@ def _menu_rows(itens):
 def _render_menu(titulo, itens, rodape=None, info=None):
     limpar()
     titulo_box(titulo)
-    rows = _menu_rows(itens)
-    for row in rows:
-        if row is None:
-            _dleve()
-            continue
-        numero, label = row
-        _ln(f'  {_c_input(numero)}  {_c_menu(label)}')
+    valid = [i for i in itens if i is not None]
+    # Em terminais largos, duas opções por linha reduzem rolagem sem
+    # comprometer a leitura; em terminais estreitos, mantém uma coluna.
+    duas_colunas = _larg() >= 84
+    if duas_colunas:
+        metade = (len(valid) + 1) // 2
+        esquerda, direita = valid[:metade], valid[metade:]
+        largura_col = (_larg() - 10) // 2
+        for i in range(metade):
+            a = esquerda[i]
+            b = direita[i] if i < len(direita) else None
+            parte_a = f"{_c_input(str(a[0]).rjust(2))}  {_c_menu(a[1])}"
+            if b:
+                parte_b = f"{_c_input(str(b[0]).rjust(2))}  {_c_menu(b[1])}"
+                _ln('  ' + _pl(parte_a, largura_col) + '   ' + parte_b)
+            else:
+                _ln('  ' + parte_a)
+    else:
+        for numero, label in valid:
+            _ln(f'  {_c_input(str(numero).rjust(2))}  {_c_menu(label)}')
     if info:
         _dleve()
         for line in info:
-            _ln(f'  {_c_muted(line)}')
+            _ln('  ' + _c_muted(line))
     if rodape:
         _dleve()
-        for item in _menu_rows(rodape):
-            if item is not None:
-                _ln(f'  {_c_input(item[0])}  {_c_menu(item[1])}')
+        for numero, label in rodape:
+            _ln(f'  {_c_input(str(numero).rjust(2))}  {_c_accent(label)}')
     msg, erro = _get_flash()
     if msg:
         _dleve()
-        texto = ('✗ ' + msg) if erro else ('✓ ' + msg)
+        texto = ('✖ ' + msg) if erro else ('✔ ' + msg)
         _ln(_c_error(texto) if erro else _c_success(texto))
     fundo()
 
@@ -472,7 +488,7 @@ def _available_rows(n_resumo=0):
     # Reserva título, resumo, navegação e bordas. A altura útil nunca é zero.
     total = _rows()
     fixo = 8
-    resumo = n_resumo + 1 if n_resumo else 0
+    resumo = n_resumo + 2 if n_resumo else 0
     return max(4, total - fixo - resumo)
 
 
@@ -552,60 +568,116 @@ def _tabela_renderizar(cabecalhos, linhas, cores_linhas=None):
     _ln(borda())
 
 
-def paginar_tabela(d, titulo, itens, cabecalhos, linhas_fn, resumo_fn=None, cor_item_fn=None):
-    """Paginação de relatórios tabulares, repetindo o cabeçalho em cada página."""
+def paginar_tabela(d, titulo, itens, cabecalhos, linhas_fn, resumo_fn=None, cor_item_fn=None, separador_item=True):
+    """Apresenta todos os relatórios em cartões compactos, no padrão visual de férias coincidentes."""
     if not itens:
-        limpar(); titulo_box(titulo); _ln('Nenhum registro encontrado.', 'center'); fundo(); pausar()
+        limpar(); titulo_box(titulo); _ln(_c_muted('Nenhum registro encontrado.'), 'center'); fundo(); pausar()
         return
-    grupos = []
+
+    largura = max(36, _larg() - 8)
+    registros = []
     for item in itens:
-        rows = linhas_fn(item)
-        if rows:
-            grupos.append((item, rows))
-    if not grupos:
-        limpar(); titulo_box(titulo); _ln('Nenhum registro encontrado.', 'center'); fundo(); pausar()
+        for row in (linhas_fn(item) or []):
+            valores = [str(v).replace('\n', ' / ').replace('\r', ' ').strip() for v in row]
+            valores = (valores + [''] * len(cabecalhos))[:len(cabecalhos)]
+            if not any(valores):
+                continue
+            destaque = bool(cor_item_fn(item)) if cor_item_fn else False
+            marcador = _c_error('● ') if destaque else _c_success('● ')
+            principal = valores[0] or (cabecalhos[0] if cabecalhos else 'Registro')
+            bloco = [ '  ' + marcador + _c_menu(principal) ]
+            campos = []
+            for pos, valor in enumerate(valores[1:], start=1):
+                if not valor:
+                    continue
+                rotulo = str(cabecalhos[pos] if pos < len(cabecalhos) else f'Campo {pos + 1}')
+                norm, vnorm = rotulo.casefold(), valor.casefold()
+                if any(k in norm for k in ('situação', 'status', 'estado')):
+                    if any(k in vnorm for k in ('trabalh', 'ativo', 'confirmado', 'aprovado', 'em dia', 'concluído')):
+                        valor_fmt = _c_success(valor)
+                    elif 'não' in vnorm or 'bloqueado' in vnorm or 'vencid' in vnorm:
+                        valor_fmt = _c_error(valor)
+                    elif 'pendente' in vnorm or 'atenção' in vnorm or 'vencer' in vnorm:
+                        valor_fmt = _c_warning(valor)
+                    else:
+                        valor_fmt = valor
+                elif any(k in norm for k in ('restam', 'saldo')) and valor.startswith('-'):
+                    valor_fmt = _c_error(valor)
+                else:
+                    valor_fmt = valor
+                campos.append((rotulo + ': ', valor_fmt, _vis(rotulo + ': ') + _vis(valor)))
+
+            # Distribui os campos em linhas de largura controlada; os rótulos
+            # permanecem próximos dos valores e não há colunas truncadas.
+            atual, usada = '', 0
+            for rotulo_fmt, valor_fmt, custo in campos:
+                separador = '  •  ' if atual else ''
+                if atual and usada + 5 + custo > largura:
+                    bloco.append('    ' + atual)
+                    atual, usada, separador = '', 0, ''
+                campo = _c_muted(rotulo_fmt) + valor_fmt
+                if _vis(rotulo_fmt) + _vis(valor_fmt) > largura - 4:
+                    if atual:
+                        bloco.append('    ' + atual)
+                        atual, usada, separador = '', 0, ''
+                    texto = rotulo_fmt + valor_fmt
+                    partes = _wrap('    ' + texto, largura)
+                    bloco.extend(partes)
+                else:
+                    atual += separador + campo
+                    usada += (5 if separador else 0) + custo
+            if atual:
+                bloco.append('    ' + atual)
+            registros.append((bloco, destaque))
+
+    if not registros:
+        limpar(); titulo_box(titulo); _ln(_c_muted('Nenhum registro encontrado.'), 'center'); fundo(); pausar()
         return
+
     resumo_buf = _capturar(resumo_fn) if resumo_fn else []
-    pag_idx = 0
+    limite = max(5, _rows() - len(resumo_buf) - 11)
+    paginas, pagina, usadas = [], [], 0
+    for bloco, destaque in registros:
+        custo = len(bloco) + 1
+        if pagina and usadas + custo > limite:
+            paginas.append(pagina); pagina, usadas = [], 0
+        pagina.append(bloco); usadas += custo
+    if pagina:
+        paginas.append(pagina)
+
+    indice = 0
     while True:
-        available = max(1, _available_rows(len(resumo_buf)) - 4)
-        pages, page, used = [], [], 0
-        for item, rows in grupos:
-            size = max(1, len(rows))
-            if page and used + size > available:
-                pages.append(page); page, used = [], 0
-            page.append((item, rows)); used += size
-        if page:
-            pages.append(page)
-        pag_idx = min(pag_idx, len(pages) - 1)
         limpar(); topo()
         _ln(_c_title(str(titulo).strip().upper()), 'center')
-        _ln(f'{pag_idx + 1}/{len(pages)}  •  {len(itens)} {t("pag_itens")}', 'center')
+        _ln(_c_muted(f'{indice + 1}/{len(paginas)} • {len(registros)} registros'), 'center')
         _div()
-        for item in resumo_buf:
-            _print_buf(item)
+        for linha in resumo_buf:
+            _print_buf(linha)
         if resumo_buf:
+            _ln('')  # pequeno respiro entre o resumo consolidado e os registros
             _dleve()
-        linhas_pagina = [row for _, rows in pages[pag_idx] for row in rows]
-        cores_pagina = [bool(cor_item_fn(item)) for item, rows in pages[pag_idx] for _ in rows] if cor_item_fn else None
-        _tabela_renderizar(cabecalhos, linhas_pagina, cores_pagina)
-        _dleve(); _ln(_c_muted(_pagina_nav(pag_idx, len(pages))), 'center'); fundo()
+        for bloco in paginas[indice]:
+            for linha in bloco:
+                _ln(linha)
+            if separador_item:
+                _dleve()
+        _ln(_c_muted(_pagina_nav(indice, len(paginas))), 'center')
+        fundo()
         cmd = inp(t('pag_cmd')).strip().lower()
         if cmd in ('0', ''):
             break
         if cmd in ('p', 'd'):
-            if pag_idx < len(pages) - 1: pag_idx += 1
+            if indice < len(paginas) - 1: indice += 1
             else: flash('Você já está na última página.', erro=True)
         elif cmd in ('a', 'q'):
-            if pag_idx > 0: pag_idx -= 1
+            if indice > 0: indice -= 1
             else: flash('Você já está na primeira página.', erro=True)
         elif cmd == 'n':
             try:
-                num = int(inp(t('pag_ir_para', n=len(pages))).strip())
-                if 1 <= num <= len(pages): pag_idx = num - 1
+                num = int(inp(t('pag_ir_para', n=len(paginas))).strip())
+                if 1 <= num <= len(paginas): indice = num - 1
                 else: flash(t('fora_intervalo'), erro=True)
-            except ValueError:
-                flash(t('so_numero'), erro=True)
+            except ValueError: flash(t('so_numero'), erro=True)
         else:
             flash(t('invalido'), erro=True)
 
@@ -635,6 +707,7 @@ def paginar(d, titulo, itens, render_item_fn, resumo_fn=None):
         for item in resumo_buf:
             _print_buf(item)
         if resumo_buf:
+            _ln('')  # pequeno respiro entre o resumo consolidado e os registros
             _dleve()
         for item in pages[pag_idx]:
             _print_buf(item)
@@ -674,7 +747,76 @@ def _conn():
     con = sqlite3.connect(str(BANCO_DADOS))
     con.execute('PRAGMA foreign_keys = ON')
     con.row_factory = sqlite3.Row
+    # Funções usadas pelos gatilhos de auditoria. O usuário é obtido da sessão
+    # ativa no momento exato da gravação, inclusive em operações indiretas.
+    con.create_function('audit_login', 0, lambda: SESSAO.get('login') or 'sistema')
+    con.create_function('audit_nome', 0, lambda: SESSAO.get('nome') or 'Sistema')
+    con.create_function('audit_usuario_id', 0, lambda: _audit_usuario_id())
+    con.create_function('audit_data', 0, lambda: datetime.now().astimezone().isoformat(timespec='seconds'))
     return con
+
+
+def _audit_usuario_id():
+    login = SESSAO.get('login')
+    if not login:
+        return None
+    try:
+        con = sqlite3.connect(str(BANCO_DADOS))
+        row = con.execute('SELECT id FROM usuarios WHERE login=?', (login,)).fetchone()
+        con.close()
+        return row[0] if row else None
+    except sqlite3.Error:
+        return None
+
+
+def _auditar_evento(acao, entidade='sistema', detalhes='', resultado='OK'):
+    # Registra eventos de aplicação que não são alterações diretas no banco.
+    con = _conn()
+    try:
+        con.execute(
+            'INSERT INTO trilha_auditoria (ocorrido_em, usuario_id, usuario_login, usuario_nome, '
+            'acao, entidade, registro_id, detalhes, resultado) VALUES (?,?,?,?,?,?,?,?,?)',
+            (datetime.now().astimezone().isoformat(timespec='seconds'), _audit_usuario_id(),
+             SESSAO.get('login') or 'sistema', SESSAO.get('nome') or 'Sistema',
+             str(acao), str(entidade), None, str(detalhes)[:2000], str(resultado))
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
+def _instalar_gatilhos_auditoria(con):
+    # Instala gatilhos para registrar INSERT, UPDATE e DELETE nas tabelas.
+    tabelas = [r['name'] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' "
+        "AND name <> 'trilha_auditoria'"
+    ).fetchall()]
+    for tabela in tabelas:
+        colunas = [r['name'] for r in con.execute(f'PRAGMA table_info("{tabela}")').fetchall()]
+        # Nunca copiar hashes ou credenciais para a trilha.
+        seguras = [c for c in colunas if c.lower() not in ('senha_hash', 'senha', 'password', 'token', 'secret')]
+        if not seguras:
+            continue
+        pares_new = ' , '.join("'" + c.replace("'", "''") + "', NEW.\"" + c.replace('"', '""') + '\"' for c in seguras)
+        pares_old = ' , '.join("'" + c.replace("'", "''") + "', OLD.\"" + c.replace('"', '""') + '\"' for c in seguras)
+        pk = next((c for c in colunas if c == 'id'), None)
+        id_new = f'NEW."{pk}"' if pk else 'NULL'
+        id_old = f'OLD."{pk}"' if pk else 'NULL'
+        nome = tabela.replace('"', '""')
+        for operacao, ref, dados in (
+            ('INSERT', id_new, f'json_object({pares_new})'),
+            ('UPDATE', id_new, "json_object('antes', json_object(" + pares_old + "), 'depois', json_object(" + pares_new + '))'),
+            ('DELETE', id_old, f'json_object({pares_old})'),
+        ):
+            gatilho = f'aud_{tabela}_{operacao.lower()}'
+            con.execute(f'DROP TRIGGER IF EXISTS "{gatilho}"')
+            con.execute(f'''CREATE TRIGGER "{gatilho}" AFTER {operacao} ON "{nome}"
+                BEGIN
+                    INSERT INTO trilha_auditoria
+                    (ocorrido_em, usuario_id, usuario_login, usuario_nome, acao, entidade, registro_id, detalhes, resultado)
+                    VALUES (audit_data(), audit_usuario_id(), audit_login(), audit_nome(),
+                    '{operacao}', '{tabela.replace("'", "''")}', {ref}, {dados}, 'OK');
+                END''')
 
 def _migrar_banco_legado():
     """Migra automaticamente um banco antigo localizado junto ao programa.
@@ -729,11 +871,48 @@ def _init_banco():
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )""")
     con.execute("CREATE INDEX IF NOT EXISTS idx_banco_horas_func_data ON banco_horas(funcionario_id, data, id)")
+    con.executescript("""
+        CREATE TABLE IF NOT EXISTS escalas_especiais (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            inicio TEXT NOT NULL,
+            fim TEXT NOT NULL,
+            escopo TEXT NOT NULL DEFAULT '',
+            criado_em TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS escalas_especiais_funcionarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            escala_id INTEGER NOT NULL,
+            funcionario_id INTEGER NOT NULL,
+            situacao TEXT NOT NULL DEFAULT 'P' CHECK(situacao IN ('T','N','P')),
+            observacao TEXT NOT NULL DEFAULT '',
+            UNIQUE(escala_id, funcionario_id),
+            FOREIGN KEY (escala_id) REFERENCES escalas_especiais(id) ON DELETE CASCADE,
+            FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_escala_especial_func ON escalas_especiais_funcionarios(escala_id, situacao);
+    """)
     try:
         con.execute("ALTER TABLE funcionarios ADD COLUMN data_admissao TEXT NOT NULL DEFAULT ''")
         con.commit()
-    except:
+    except sqlite3.OperationalError:
         pass
+    con.execute('''CREATE TABLE IF NOT EXISTS trilha_auditoria (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ocorrido_em TEXT NOT NULL,
+        usuario_id INTEGER,
+        usuario_login TEXT NOT NULL,
+        usuario_nome TEXT NOT NULL,
+        acao TEXT NOT NULL,
+        entidade TEXT NOT NULL,
+        registro_id INTEGER,
+        detalhes TEXT NOT NULL DEFAULT '',
+        resultado TEXT NOT NULL DEFAULT 'OK'
+    )''')
+    con.execute('CREATE INDEX IF NOT EXISTS idx_auditoria_data ON trilha_auditoria(ocorrido_em DESC, id DESC)')
+    con.execute('CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON trilha_auditoria(usuario_login, ocorrido_em DESC)')
+    _instalar_gatilhos_auditoria(con)
     con.commit()
     con.close()
 
@@ -818,8 +997,7 @@ def carregar_dados():
     for fr in c.execute('SELECT id,nome,setor,subsetor,vinculo,data_admissao FROM funcionarios ORDER BY id').fetchall():
         ferias = []
         for pr in c2.execute('SELECT inicio,fim,venda_ferias FROM ferias WHERE funcionario_id=? ORDER BY id', (fr['id'],)):
-            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})
-        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
+            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
     CR = _campos_regras()
     regras = _regras_padrao()
     for rr in c.execute('SELECT nivel,referencia,campo,valor FROM regras'):
@@ -947,6 +1125,7 @@ def ord_setores(d):
     ns = list(d['setores'].keys())
     rev = _rev(d)
     return sorted(ns, key=lambda x: x.lower(), reverse=rev) if d.get('config', CONFIG_PADRAO).get('ordem_setores', 'nome') == 'nome' else list(reversed(ns)) if rev else ns
+
 def ord_subs(d, setor):
     subs = list(d['setores'].get(setor, {}).get('subsetores', []))
     rev = _rev(d)
@@ -1817,8 +1996,7 @@ def painel_ferias(d):
         itens.append({'tipo': 'vazio_ag'})
     itens.append({'tipo': 'secao', 'txt': t('painel_30dias')})
     if em_30dias:
-        for r in em_30dias:
-            itens.append({'tipo': 'em30', **r})
+        for r in em_30dias:            itens.append({'tipo': 'em30', **r})
     else:
         itens.append({'tipo': 'vazio_30'})
 
@@ -2537,34 +2715,55 @@ def _bh_relatorio_tabela(d, registros):
                    ['Funcionário', 'Setor', 'Subsetor', 'Saldo'], linhas_saldo_bh,
                    lambda: (_ln(f'Filtro: {descricao}'), _ln(f'Funcionários: {len(filtrados)}')))
 
+def _bh_resumo_menu_relatorios(registros):
+    """Exibe os indicadores consolidados diretamente na seleção de relatórios."""
+    total = sum(r['saldo'] for r in registros)
+    positivos = sum(1 for r in registros if r['saldo'] > 0)
+    negativos = sum(1 for r in registros if r['saldo'] < 0)
+    zerados = len(registros) - positivos - negativos
+    creditos = sum(r['creditos'] for r in registros)
+    debitos = -sum(r['debitos'] for r in registros)
+    maior = max(registros, key=lambda r: abs(r['saldo']), default=None)
+    _ln(_c_accent('RESUMO GERAL'), 'center')
+    _ln('  ' + _c_muted('Funcionários: ') + _c_menu(str(len(registros)))
+        + '  •  ' + _c_success(f'Positivos: {positivos}')
+        + '  •  ' + _c_error(f'Negativos: {negativos}')
+        + '  •  ' + _c_muted(f'Zerados: {zerados}'))
+    _ln('  ' + _c_muted('Saldo líquido: ') + _c_menu(_bh_fmt_minutos(total))
+        + '  •  ' + _c_muted('Créditos: ') + _c_success(_bh_fmt_minutos(creditos))
+        + '  •  ' + _c_muted('Débitos: ') + _c_warning(_bh_fmt_minutos(debitos)))
+    if maior is not None:
+        _ln('  ' + _c_muted('Maior saldo absoluto: ')
+            + _c_menu(_bh_identificacao_func(maior['func']))
+            + ' — ' + _c_accent(_bh_fmt_minutos(maior['saldo'])))
+    _dleve()
+
+
 def bh_relatorio(d):
     registros = _bh_todos_saldos(d)
     if not registros:
         flash(t('bh_sem_func'), erro=True); return
 
-    # A preferência é persistente e configurada em Configurações do sistema.
     cfg = d.get('config', CONFIG_PADRAO)
     ocultar_zerados = cfg.get('bh_ocultar_saldos_zerados', 'ocultar') != 'exibir'
     registros_listagem = [r for r in registros if r['saldo'] != 0] if ocultar_zerados else list(registros)
 
-    limpar(); titulo_box('RELATÓRIOS DO BANCO DE HORAS'); _lvz()
-    _ln('  1. Resumo geral e indicadores')
-    _ln('  2. Ranking geral por saldo (maior para menor)')
-    _ln('  3. Ranking de maiores saldos positivos')
-    _ln('  4. Ranking de maiores saldos negativos')
-    _ln('  5. Gráfico completo de saldos (maior para menor)')
-    _ln('  6. Alertas de saldo')
-    _ln('  7. Tabela de saldos por funcionário, setor e subsetor')
+    limpar(); titulo_box('RELATÓRIOS DO BANCO DE HORAS')
+    _bh_resumo_menu_relatorios(registros)
+    _ln('  1. Ranking geral por saldo (maior para menor)')
+    _ln('  2. Ranking de maiores saldos positivos')
+    _ln('  3. Ranking de maiores saldos negativos')
+    _ln('  4. Gráfico completo de saldos (maior para menor)')
+    _ln('  5. Alertas de saldo')
+    _ln('  6. Tabela de saldos por funcionário, setor e subsetor')
     _ln('  0. Voltar'); _lvz(); fundo()
     op = inp(t('opcao')).strip()
     if op == '0': return
-    if op == '1':
-        limpar(); titulo_box('RESUMO GERAL — INDICADORES'); _bh_relatorio_resumo(registros)
-    elif op in ('2', '3', '4'):
-        if op == '2':
+    if op in ('1', '2', '3'):
+        if op == '1':
             selecionados = sorted(registros_listagem, key=lambda r: (r['saldo'], str(r['func'].get('nome', '')).casefold()), reverse=True)
             titulo = 'RANKING GERAL — MAIOR PARA MENOR SALDO'
-        elif op == '3':
+        elif op == '2':
             selecionados = sorted((r for r in registros_listagem if r['saldo'] > 0), key=lambda r: (r['saldo'], str(r['func'].get('nome', '')).casefold()), reverse=True)
             titulo = 'RANKING — MAIORES SALDOS POSITIVOS'
         else:
@@ -2573,12 +2772,18 @@ def bh_relatorio(d):
         if not selecionados:
             limpar(); titulo_box(titulo); _ln('Nenhum funcionário nesta categoria.', 'center'); _dleve(); fundo(); pausar(); return
         limite_critico = _bh_limite_alerta_minutos(d)
+        posicoes = {id(registro): i for i, registro in enumerate(selecionados, 1)}
+        def linha_ranking(r):
+            posicao = posicoes[id(r)]
+            func = r['func']
+            unidade = ' / '.join(x for x in (func.get('setor', ''), func.get('subsetor', '')) if x)
+            return [[f'{posicao:02d}. {func.get("nome", "")}', unidade, _bh_fmt_minutos(r['saldo'])]]
         paginar_tabela(d, titulo, selecionados,
-            ['Posição', 'Funcionário', 'Setor', 'Subsetor', 'Saldo'],
-            lambda r: [[str(selecionados.index(r) + 1), r['func'].get('nome', ''), r['func'].get('setor', ''), r['func'].get('subsetor', ''), _bh_fmt_minutos(r['saldo'])]],
-            cor_item_fn=lambda r: r['saldo'] < 0 or abs(r['saldo']) >= limite_critico)
+            ['Funcionário', 'Setor / Subsetor', 'Saldo'], linha_ranking,
+            cor_item_fn=lambda r: r['saldo'] < 0 or abs(r['saldo']) >= limite_critico,
+            separador_item=False)
         return
-    elif op == '5':
+    elif op == '4':
         limpar(); titulo_box('GRÁFICO COMPLETO DE SALDOS — MAIOR PARA MENOR')
         top = sorted(registros_listagem, key=lambda r: (r['saldo'], str(r['func'].get('nome', '')).casefold()), reverse=True)
         max_abs = max((abs(r['saldo']) for r in top), default=0)
@@ -2590,7 +2795,7 @@ def bh_relatorio(d):
         if not max_abs: _ln('Todos os saldos estão zerados.')
         _tabela_renderizar(['Posição', 'Funcionário', 'Setor', 'Subsetor', 'Gráfico relativo', 'Saldo'], linhas, [r['saldo'] < 0 or abs(r['saldo']) >= _bh_limite_alerta_minutos(d) for r in top])
         _ln('Escala relativa ao maior saldo absoluto exibido.'); _dleve(); fundo(); pausar(); return
-    elif op == '6':
+    elif op == '5':
         limpar(); titulo_box('ALERTAS DE SALDO')
         limite_critico = _bh_limite_alerta_minutos(d)
         alertas = sorted((r for r in registros if abs(r['saldo']) >= 20 * 60), key=lambda r: abs(r['saldo']), reverse=True)
@@ -2604,7 +2809,7 @@ def bh_relatorio(d):
                 linhas.append([nivel, r['func'].get('nome', ''), r['func'].get('setor', ''), r['func'].get('subsetor', ''), _bh_fmt_minutos(r['saldo']), direcao])
             _tabela_renderizar(['Nível', 'Funcionário', 'Setor', 'Subsetor', 'Saldo', 'Direção'], linhas, [r['saldo'] < 0 or abs(r['saldo']) >= limite_critico for r in alertas])
         _ln(f'Atenção a partir de 20:00; limite crítico configurado: {_bh_fmt_minutos(limite_critico, sinal=False)}')
-    elif op == '7':
+    elif op == '6':
         _bh_relatorio_tabela(d, registros_listagem)
         return
     else:
@@ -2709,7 +2914,7 @@ def agendar_ferias(d):
     titulo_box(t('fer_agendar'))
     _lvz()
     fundo()
-    func = sel_func(d)
+    func = sel_func(d, setor_mesma_linha=True)
     if not func:
         return
     v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
@@ -2790,8 +2995,7 @@ def cancelar_ferias(d):
             return
         idx = e - 1
         if 0 <= idx < len(ferias_ord):
-            rm = ferias_ord[idx]
-            func['ferias'] = [f for f in func['ferias'] if not (f['inicio'] == rm['inicio'] and f['fim'] == rm['fim'])]
+            rm = ferias_ord[idx]            func['ferias'] = [f for f in func['ferias'] if not (f['inicio'] == rm['inicio'] and f['fim'] == rm['fim'])]
             salvar_dados(d)
             flash(f"{rm['inicio']} → {rm['fim']} — " + t('fer_removida'))
         else:
@@ -2843,7 +3047,7 @@ def ver_calendario(d):
 
 def menu_relatorios(d):
     while True:
-        _render_menu(t('rel_titulo'), [(1, t('rel_pa_menu')), (2, t('rel_saldo')), (3, t('rel_individual')), (4, t('rel_multi')), (5, t('rel_periodo')), (6, t('rel_geral')), (7, t('rel_setor')), (8, t('rel_sub')), (9, t('rel_situacao')), (10, t('rel_vencidas')), (11, t('rel_ano')), (12, 'Relatórios do Banco de Horas')], rodape=[(0, t('voltar'))])
+        _render_menu(t('rel_titulo'), [(1, t('rel_pa_menu')), (2, t('rel_saldo')), (3, t('rel_individual')), (4, t('rel_multi')), (5, t('rel_periodo')), (6, t('rel_geral')), (7, t('rel_setor')), (8, t('rel_sub')), (9, t('rel_situacao')), (10, t('rel_vencidas')), (11, t('rel_ano')), (12, 'Relatórios do Banco de Horas'), (13, 'Férias coincidentes')], rodape=[(0, t('voltar'))])
         op = inp(t('opcao')).strip()
         if op == '1':
             rel_por_periodo_aquisitivo(d)
@@ -2869,10 +3073,157 @@ def menu_relatorios(d):
             rel_por_ano_civil(d)
         elif op == '12':
             bh_relatorio(d)
+        elif op == '13':
+            rel_ferias_coincidentes(d)
         elif op == '0':
             break
         else:
             flash(t('invalido'), erro=True)
+
+def rel_ferias_coincidentes(d):
+    """Compara períodos de férias de funcionários distintos no escopo escolhido."""
+    todos = ord_funcs(d)
+    if len(todos) < 2:
+        flash('São necessários pelo menos dois funcionários cadastrados.', erro=True)
+        return
+
+    limpar()
+    titulo_box('FÉRIAS COINCIDENTES')
+    _lvz()
+    _ln('  1. Toda a empresa')
+    _ln('  2. Por setor')
+    _ln('  3. Por subsetor')
+    _ln('  4. Funcionários selecionados')
+    _dleve()
+    _ln(f"  0. {t('voltar')}")
+    fundo()
+    escopo = inp(t('opcao')).strip()
+
+    if escopo in ('0', ''):
+        return
+    if escopo == '1':
+        base = todos
+        descricao = 'Toda a empresa'
+    elif escopo == '2':
+        setor = sel_setor(d)
+        if not setor:
+            return
+        base = [f for f in todos if f.get('setor') == setor]
+        descricao = f'Setor: {setor}'
+    elif escopo == '3':
+        setor = sel_setor(d)
+        if not setor:
+            return
+        subsetor = sel_sub(d, setor)
+        if not subsetor:
+            return
+        base = [f for f in todos if f.get('setor') == setor and f.get('subsetor') == subsetor]
+        descricao = f'Setor: {setor} / Subsetor: {subsetor}'
+    elif escopo == '4':
+        base = _tela_selecao_funcionarios(d)
+        if not base:
+            return
+        descricao = 'Funcionários selecionados'
+    else:
+        flash(t('invalido'), erro=True)
+        return
+
+    # Deduplica por identificador de cadastro, preservando funcionários sem _id.
+    base_unica = []
+    vistos = set()
+    for indice, func in enumerate(base):
+        identidade = func.get('_id')
+        chave = ('id', identidade) if identidade is not None else ('obj', id(func))
+        if chave not in vistos:
+            vistos.add(chave)
+            base_unica.append(func)
+    base = ord_funcs(d, base_unica)
+
+    conflitos = []
+    periodos_validos = 0
+    for func in base:
+        for ferias in func.get('ferias', []) or []:
+            inicio = conv_data(ferias.get('inicio', ''))
+            fim = conv_data(ferias.get('fim', ''))
+            if inicio and fim and inicio <= fim:
+                periodos_validos += 1
+
+    for indice, func_a in enumerate(base):
+        for func_b in base[indice + 1:]:
+            for fer_a in func_a.get('ferias', []) or []:
+                ini_a = conv_data(fer_a.get('inicio', ''))
+                fim_a = conv_data(fer_a.get('fim', ''))
+                if not ini_a or not fim_a or ini_a > fim_a:
+                    continue
+                for fer_b in func_b.get('ferias', []) or []:
+                    ini_b = conv_data(fer_b.get('inicio', ''))
+                    fim_b = conv_data(fer_b.get('fim', ''))
+                    if not ini_b or not fim_b or ini_b > fim_b:
+                        continue
+                    if sobrepoem(ini_a, fim_a, ini_b, fim_b):
+                        inicio_comum = max(ini_a, ini_b)
+                        fim_comum = min(fim_a, fim_b)
+                        conflitos.append({
+                            'a': func_a,
+                            'b': func_b,
+                            'fer_a': fer_a,
+                            'fer_b': fer_b,
+                            'inicio': inicio_comum,
+                            'fim': fim_comum,
+                            'dias': (fim_comum - inicio_comum).days + 1,
+                        })
+
+    conflitos.sort(key=lambda item: (
+        item['inicio'], item['fim'],
+        item['a'].get('nome', '').casefold(),
+        item['b'].get('nome', '').casefold(),
+    ))
+
+    def resumo():
+        # Indicadores em duas linhas para facilitar a leitura sem consumir
+        # excessivamente a altura disponível do terminal.
+        _ln('  ' + _c_muted('ESCOPO') + '  ' + _c_menu(descricao))
+        _ln('  ' + _c_muted('FUNCIONÁRIOS') + ' ' + _c_accent(str(len(base)))
+            + '   ' + _c_muted('PERÍODOS') + ' ' + _c_accent(str(periodos_validos))
+            + '   ' + _c_muted('CONFLITOS') + ' ' + _c_warning(str(len(conflitos))))
+
+    def render_conflito(item):
+        func_a, func_b = item['a'], item['b']
+        nome_a = func_a.get('nome', '—')
+        nome_b = func_b.get('nome', '—')
+        unidade_a = f"{func_a.get('setor', '—')} / {func_a.get('subsetor', '—')}"
+        unidade_b = f"{func_b.get('setor', '—')} / {func_b.get('subsetor', '—')}"
+        periodo_a = f"{item['fer_a'].get('inicio', '—')} a {item['fer_a'].get('fim', '—')}"
+        periodo_b = f"{item['fer_b'].get('inicio', '—')} a {item['fer_b'].get('fim', '—')}"
+        comum = f"{item['inicio'].strftime('%d/%m/%Y')} a {item['fim'].strftime('%d/%m/%Y')}"
+
+        _ln('  ' + _c_warning('●') + ' ' + _c_menu(nome_a)
+            + '  ' + _c_muted('↔') + '  ' + _c_menu(nome_b))
+        _ln('    ' + _c_accent('1') + ' ' + _c_muted(unidade_a)
+            + '  ' + _c_muted('Férias: ') + periodo_a)
+        _ln('    ' + _c_accent('2') + ' ' + _c_muted(unidade_b)
+            + '  ' + _c_muted('Férias: ') + periodo_b)
+        _ln('    ' + _c_success('COINCIDÊNCIA') + ' ' + _c_success(comum)
+            + '  ' + _c_warning(f"{item['dias']} dias"))
+
+    if not conflitos:
+        limpar()
+        titulo_box('FÉRIAS COINCIDENTES')
+        _lvz()
+        _lnd('Escopo consultado', descricao)
+        _lnd('Funcionários analisados', str(len(base)))
+        _lnd('Períodos válidos analisados', str(periodos_validos))
+        _dleve()
+        _ln('Nenhuma coincidência de férias encontrada.', 'center')
+        fundo()
+        pausar()
+        return
+
+    # Cada conflito é apresentado como um bloco visual: os dois funcionários
+    # aparecem lado a lado no cabeçalho, seguidos de unidade, férias e intervalo
+    # comum. Isso evita o texto corrido com nove campos que ficava difícil de ler.
+    paginar(d, 'RELATÓRIO DE FÉRIAS COINCIDENTES', conflitos,
+            render_conflito, resumo)
 
 def rel_por_periodo_aquisitivo(d):
     limpar()
@@ -3643,8 +3994,7 @@ def _editar_bloco(bloco, titulo_tela, parent=None):
                 _ln(f"  {t('reg_herdar')}: {vr} ({t('reg_niv_sup')})")
                 _lvz()
                 fundo()
-                p()
-                r = inp(t('reg_num_h')).strip()
+                p()                r = inp(t('reg_num_h')).strip()
             else:
                 _ln(f"  {t('reg_atual')}: {(atual if atual is not None else meta['padrao'])}")
                 _lvz()
@@ -4359,10 +4709,49 @@ def menu_idioma(d):
         else:
             flash(t('invalido'), erro=True)
 
+def menu_trilha_auditoria(d):
+    """Consulta administrativa da trilha de rastreabilidade."""
+    if SESSAO.get('nivel') != 'admin':
+        flash('Acesso restrito a administradores.', erro=True)
+        return
+    while True:
+        limpar()
+        titulo_box('TRILHA DE AUDITORIA')
+        _lvz()
+        con = _conn()
+        total = con.execute('SELECT COUNT(*) FROM trilha_auditoria').fetchone()[0]
+        usuarios = con.execute('SELECT COUNT(DISTINCT usuario_login) FROM trilha_auditoria').fetchone()[0]
+        rows = con.execute("SELECT ocorrido_em, usuario_login, usuario_nome, acao, entidade, registro_id, detalhes, resultado FROM trilha_auditoria ORDER BY id DESC LIMIT 100").fetchall()
+        con.close()
+        _ln(f"  Registros: {_c_accent(str(total))}   Usuários identificados: {_c_accent(str(usuarios))}")
+        _ln('  Exibindo os 100 eventos mais recentes.')
+        _lvz()
+        if not rows:
+            _ln('  Nenhum evento registrado ainda.')
+        for r in rows:
+            _ln(_c_title(f"● {r['acao']}  |  {r['entidade']}"))
+            _ln(f"  {r['ocorrido_em']}  •  {r['usuario_nome']} [{r['usuario_login']}]  •  {r['resultado']}")
+            if r['registro_id'] is not None:
+                _ln(f"  Registro: {r['registro_id']}")
+            detalhe = str(r['detalhes'] or '').replace('\n', ' ')
+            if detalhe:
+                _ln('  ' + _c_muted(detalhe[:500]))
+            _dleve()
+        _ln('  [R] Atualizar  [0] Voltar')
+        fundo()
+        op = inp('Opção:').strip().lower()
+        if op == '0':
+            return
+        if op != 'r':
+            flash('Opção inválida.', erro=True)
+
+
 def menu_administracao(d):
     while True:
-        _render_menu(t('adm_titulo'), [(1, t('adm_usuarios')), (2, t('adm_backup')), (3, t('adm_apagar')), (4, t('adm_idioma'))], rodape=[(0, t('voltar'))])
+        _render_menu(t('adm_titulo'), [(1, t('adm_usuarios')), (2, t('adm_backup')), (3, t('adm_apagar')), (4, t('adm_idioma')), (5, 'Consultar trilha de auditoria')], rodape=[(0, t('voltar'))])
         op = inp(t('opcao')).strip()
+        if op in {'1','2','3','4','5'}:
+            _auditar_evento('ACESSO_ADMIN', 'administracao', f'Opção administrativa {op}.')
         if op == '1':
             menu_usuarios(d)
         elif op == '2':
@@ -4371,6 +4760,8 @@ def menu_administracao(d):
             apagar_dados(d)
         elif op == '4':
             menu_idioma(d)
+        elif op == '5':
+            menu_trilha_auditoria(d)
         elif op == '0':
             break
         else:
@@ -4415,6 +4806,467 @@ def _configurar_admin_inicial():
     return True
 
 # ---------------------------------------------------------------------------
+# Escalas especiais — feriados enforcados e recesso
+# ---------------------------------------------------------------------------
+
+def _escala_listar_eventos():
+    con = _conn()
+    try:
+        return con.execute(
+            "SELECT e.*, COUNT(ef.id) AS total, "
+            "SUM(CASE WHEN ef.situacao='T' THEN 1 ELSE 0 END) AS trabalhou, "
+            "SUM(CASE WHEN ef.situacao='N' THEN 1 ELSE 0 END) AS nao_trabalhou, "
+            "SUM(CASE WHEN ef.situacao='P' THEN 1 ELSE 0 END) AS pendente "
+            "FROM escalas_especiais e LEFT JOIN escalas_especiais_funcionarios ef "
+            "ON ef.escala_id=e.id GROUP BY e.id ORDER BY e.inicio DESC, e.id DESC"
+        ).fetchall()
+    finally:
+        con.close()
+
+
+def _escala_funcionarios(escala_id):
+    """Consulta sempre o vínculo persistido, sem depender do cache em memória."""
+    con = _conn()
+    try:
+        return con.execute(
+            "SELECT ef.funcionario_id AS id, COALESCE(f.nome, '[Funcionário não localizado]') AS nome, "
+            "COALESCE(f.setor, 'Sem setor') AS setor, COALESCE(f.subsetor, 'Sem subsetor') AS subsetor, "
+            "COALESCE(f.vinculo, '') AS vinculo, ef.situacao, ef.observacao, ef.id AS vinculo_id "
+            "FROM escalas_especiais_funcionarios ef "
+            "LEFT JOIN funcionarios f ON f.id=ef.funcionario_id "
+            "WHERE ef.escala_id=? ORDER BY setor, subsetor, nome, ef.funcionario_id", (escala_id,)
+        ).fetchall()
+    finally:
+        con.close()
+
+
+def _escala_selecionar_evento(eventos=None):
+    eventos = list(eventos if eventos is not None else _escala_listar_eventos())
+    if not eventos:
+        flash('Nenhuma escala especial cadastrada.', erro=True)
+        return None
+    limpar(); titulo_box('ESCALAS ESPECIAIS')
+    _lvz()
+    for i, ev in enumerate(eventos, 1):
+        _ln(f"  {i}. {ev['titulo']} — {ev['inicio']} a {ev['fim']}")
+        _ln(f"     {ev['tipo']} | Trabalhou: {ev['trabalhou'] or 0} | Não trabalhou: {ev['nao_trabalhou'] or 0} | Pendente: {ev['pendente'] or 0}")
+    _dleve(); _ln('  0. Voltar'); fundo()
+    try:
+        escolha = int(inp(t('opcao')).strip())
+    except ValueError:
+        flash(t('so_numero'), erro=True); return None
+    if escolha == 0:
+        return None
+    if not 1 <= escolha <= len(eventos):
+        flash(t('fora_intervalo'), erro=True); return None
+    return eventos[escolha - 1]
+
+
+def _escala_selecao_multipla(rotulo, opcoes):
+    """Seleciona várias opções por números separados por vírgula ou * para todas."""
+    opcoes = list(opcoes)
+    if not opcoes:
+        return []
+    limpar(); titulo_box(rotulo); _lvz()
+    for i, nome in enumerate(opcoes, 1):
+        _ln(f'  {i}. {nome}')
+    _dleve(); _ln('  Informe números separados por vírgula ou * para todos.')
+    _ln('  0. Cancelar'); fundo()
+    entrada = inp('Seleção:').strip().lower()
+    if entrada == '0' or not entrada:
+        return []
+    if entrada == '*':
+        return opcoes
+    try:
+        indices = sorted({int(x.strip()) for x in entrada.replace(';', ',').split(',') if x.strip()})
+    except ValueError:
+        flash('Informe números válidos.', erro=True); return []
+    if not indices or any(i < 1 or i > len(opcoes) for i in indices):
+        flash('Seleção fora do intervalo.', erro=True); return []
+    return [opcoes[i-1] for i in indices]
+
+
+def _escala_obter_abrangencia(d, escopo_op):
+    """Retorna funcionários e descrição da abrangência da escala."""
+    if escopo_op == '1':
+        return ord_funcs(d), 'Toda a empresa'
+    if escopo_op == '2':
+        setores = _escala_selecao_multipla('SELECIONE OS SETORES', ord_setores(d))
+        if not setores: return [], ''
+        funcionarios = [f for f in d['funcionarios'] if f.get('setor') in setores]
+        return funcionarios, 'Setores: ' + ', '.join(setores)
+    if escopo_op == '3':
+        setores = _escala_selecao_multipla('SELECIONE OS SETORES', ord_setores(d))
+        if not setores: return [], ''
+        pares = []
+        for setor in setores:
+            subs = _escala_selecao_multipla(f'SUBSETORES — {setor}', ord_subs(d, setor))
+            if not subs:
+                continue
+            pares.extend((setor, sub) for sub in subs)
+        if not pares: return [], ''
+        conjunto = set(pares)
+        funcionarios = [f for f in d['funcionarios'] if (f.get('setor'), f.get('subsetor')) in conjunto]
+        descricao = 'Subsetores: ' + '; '.join(f'{setor} / {sub}' for setor, sub in pares)
+        return funcionarios, descricao
+    if escopo_op == '4':
+        funcionarios = _tela_selecao_funcionarios(d)
+        return funcionarios, 'Funcionários selecionados'
+    return [], ''
+
+
+def escala_especial_criar(d):
+    if not d.get('funcionarios'):
+        flash(t('nenhum_func'), erro=True); return
+    limpar(); titulo_box('NOVA ESCALA ESPECIAL')
+    _ln('Informe uma data única ou um período curto.', 'center')
+    _ln('A situação será aplicada a todo o período cadastrado.', 'center')
+    _ln('Se a escala variar por dia, cadastre períodos separados.', 'center')
+    _lvz(); fundo()
+    titulo = inp('Nome da ocasião (ex.: Feriado de 20/11 ou Recesso de fim de ano):').strip()
+    if not titulo:
+        flash('O nome da ocasião é obrigatório.', erro=True); return
+    _lvz()
+    _ln('  1. Feriado enforcado')
+    _ln('  2. Recesso de fim de ano')
+    _ln('  3. Outra ocasião')
+    fundo()
+    tipo_op = inp('Tipo:').strip()
+    tipos = {'1': 'Feriado enforcado', '2': 'Recesso de fim de ano', '3': 'Outra ocasião'}
+    if tipo_op not in tipos:
+        flash(t('invalido'), erro=True); return
+    inicio_s = inp('Data inicial (DD/MM/AAAA):').strip()
+    fim_s = inp('Data final (DD/MM/AAAA) ou ENTER para repetir a inicial:').strip() or inicio_s
+    inicio, fim = conv_data(inicio_s), conv_data(fim_s)
+    if not inicio or not fim or fim < inicio:
+        flash('Período inválido. Confira as datas informadas.', erro=True); return
+    _lvz()
+    _ln('  1. Toda a empresa')
+    _ln('  2. Um ou vários setores')
+    _ln('  3. Um ou vários subsetores de vários setores')
+    _ln('  4. Funcionários selecionados')
+    fundo()
+    escopo_op = inp('Abrangência:').strip()
+    if escopo_op not in ('1', '2', '3', '4'):
+        flash(t('invalido'), erro=True); return
+    funcionarios, descricao = _escala_obter_abrangencia(d, escopo_op)
+    funcionarios = [f for f in funcionarios if f.get('_id') is not None]
+    # Evita duplicidade quando o mesmo funcionário aparece em seleções sobrepostas.
+    unicos = {}
+    for f in funcionarios:
+        unicos[f['_id']] = f
+    funcionarios = list(unicos.values())
+    if not funcionarios:
+        flash('Não há funcionários válidos na abrangência selecionada.', erro=True); return
+    con = _conn()
+    try:
+        cur = con.execute(
+            'INSERT INTO escalas_especiais (titulo,tipo,inicio,fim,escopo,criado_em) VALUES (?,?,?,?,?,?)',
+            (titulo, tipos[tipo_op], inicio.strftime('%d/%m/%Y'), fim.strftime('%d/%m/%Y'), descricao, datetime.now().isoformat(timespec='seconds'))
+        )
+        escala_id = cur.lastrowid
+        con.executemany(
+            "INSERT INTO escalas_especiais_funcionarios (escala_id,funcionario_id,situacao) VALUES (?,?, 'P')",
+            [(escala_id, f['_id']) for f in funcionarios]
+        )
+        con.commit()
+    except Exception:
+        con.rollback(); raise
+    finally:
+        con.close()
+    flash(f'Escala criada com {len(funcionarios)} funcionário(s). Todos iniciaram como pendentes.')
+
+
+def _escala_dados_cobertura(registros):
+    """Calcula a cobertura exclusivamente a partir dos vínculos consultados."""
+    grupos = {}
+    for r in registros:
+        setor = (r['setor'] or '').strip() or 'Sem setor'
+        subsetor = (r['subsetor'] or '').strip() or 'Sem subsetor'
+        chave = (setor, subsetor)
+        g = grupos.setdefault(chave, {'total': 0, 'T': 0, 'N': 0, 'P': 0})
+        g['total'] += 1
+        situacao = r['situacao'] if r['situacao'] in ('T', 'N', 'P') else 'P'
+        g[situacao] += 1
+    return grupos
+
+
+def _escala_texto_cobertura(grupos):
+    """Gera linhas consistentes: uma linha por combinação setor/subsetor."""
+    linhas = []    for (setor, subsetor), g in sorted(
+        grupos.items(), key=lambda item: (item[0][0].casefold(), item[0][1].casefold())
+    ):
+        if g['T'] == 0:
+            status = 'SEM COBERTURA' if g['P'] == 0 else 'AGUARDANDO DEFINIÇÃO'
+            cor_status = _c_error(status) if g['P'] == 0 else _c_warning(status)
+        elif g['P'] > 0:
+            status = 'COBERTURA PARCIAL — HÁ PENDÊNCIAS'
+            cor_status = _c_warning(status)
+        else:
+            status = 'COBERTURA CONFIRMADA'
+            cor_status = _c_success(status)
+        linhas.append(
+            f"{setor} / {subsetor}: "
+            f"{_c_success(str(g['T']) + ' trabalham')}, "
+            f"{_c_error(str(g['N']) + ' não trabalham')}, "
+            f"{_c_warning(str(g['P']) + ' pendentes')} — {cor_status}"
+        )
+    return linhas
+
+
+def _escala_carregar_relatorio(escala_id):
+    """Lê cabeçalho e funcionários numa única transação de leitura SQLite."""
+    con = _conn()
+    try:
+        con.execute('BEGIN')
+        escala = con.execute(
+            'SELECT id, titulo, tipo, inicio, fim, escopo '
+            'FROM escalas_especiais WHERE id=?', (escala_id,)
+        ).fetchone()
+        if escala is None:
+            return None, []
+        registros = con.execute(
+            "SELECT ef.funcionario_id AS id, "
+            "COALESCE(NULLIF(TRIM(f.nome), ''), '[Funcionário não localizado]') AS nome, "
+            "COALESCE(NULLIF(TRIM(f.setor), ''), 'Sem setor') AS setor, "
+            "COALESCE(NULLIF(TRIM(f.subsetor), ''), 'Sem subsetor') AS subsetor, "
+            "COALESCE(NULLIF(TRIM(f.vinculo), ''), '—') AS vinculo, "
+            "CASE WHEN ef.situacao IN ('T','N','P') THEN ef.situacao ELSE 'P' END AS situacao, "
+            "COALESCE(NULLIF(TRIM(ef.observacao), ''), '—') AS observacao, "
+            "ef.id AS vinculo_id "
+            "FROM escalas_especiais_funcionarios ef "
+            "LEFT JOIN funcionarios f ON f.id=ef.funcionario_id "
+            "WHERE ef.escala_id=? "
+            "ORDER BY setor COLLATE NOCASE, subsetor COLLATE NOCASE, nome COLLATE NOCASE, ef.funcionario_id",
+            (escala_id,)
+        ).fetchall()
+        return dict(escala), [dict(r) for r in registros]
+    finally:
+        con.close()
+
+
+def escala_especial_atualizar(d, escala, situacao):
+    # Nesta operação, só permite alterar pessoas já vinculadas à escala.
+    ids_vinculados = {r['id'] for r in _escala_funcionarios(escala['id'])}
+    d_selecao = dict(d)
+    d_selecao['funcionarios'] = [f for f in d['funcionarios'] if f.get('_id') in ids_vinculados]
+    funcionarios = _tela_selecao_funcionarios(d_selecao)
+    if not funcionarios:
+        return
+    ids = [f.get('_id') for f in funcionarios if f.get('_id') is not None]
+    if not ids:
+        flash('Nenhum funcionário válido foi selecionado.', erro=True); return
+    con = _conn()
+    try:
+        existentes = {r['funcionario_id'] for r in con.execute(
+            'SELECT funcionario_id FROM escalas_especiais_funcionarios WHERE escala_id=?', (escala['id'],)
+        )}
+        atualizar = [fid for fid in ids if fid in existentes]
+        adicionar = [fid for fid in ids if fid not in existentes]
+        con.executemany(
+            'UPDATE escalas_especiais_funcionarios SET situacao=? WHERE escala_id=? AND funcionario_id=?',
+            [(situacao, escala['id'], fid) for fid in atualizar]
+        )
+        con.executemany(
+            'INSERT INTO escalas_especiais_funcionarios (escala_id,funcionario_id,situacao) VALUES (?,?,?)',
+            [(escala['id'], fid, situacao) for fid in adicionar]
+        )
+        con.commit()
+    finally:
+        con.close()
+    rotulos = {'T': 'trabalhou', 'N': 'não trabalhou', 'P': 'pendente'}
+    flash(f'{len(ids)} funcionário(s) atualizado(s): {rotulos[situacao]}.')
+
+
+def escala_especial_adicionar(d, escala):
+    # Recarrega os funcionários diretamente do banco. O d recebido pelo menu
+    # pode estar desatualizado quando o cadastro de funcionários foi alterado
+    # depois que a aplicação foi iniciada.
+    dados_atuais = carregar_dados()
+    funcionarios = _tela_selecao_funcionarios(dados_atuais)
+    if not funcionarios:
+        return
+
+    ids = sorted({f.get('_id') for f in funcionarios if f.get('_id') is not None})
+    if not ids:
+        flash('Nenhum funcionário válido foi selecionado.', erro=True)
+        return
+
+    con = _conn()
+    try:
+        # Confirma que os IDs ainda existem e pertencem ao cadastro atual.
+        placeholders = ','.join('?' for _ in ids)
+        validos = [r['id'] for r in con.execute(
+            f'SELECT id FROM funcionarios WHERE id IN ({placeholders})', ids
+        ).fetchall()]
+        if not validos:
+            flash('Os funcionários selecionados não foram encontrados no cadastro.', erro=True)
+            return
+
+        antes = con.total_changes
+        con.executemany(
+            "INSERT OR IGNORE INTO escalas_especiais_funcionarios "
+            "(escala_id,funcionario_id,situacao) VALUES (?,?, 'P')",
+            [(escala['id'], fid) for fid in validos]
+        )
+        adicionados = con.total_changes - antes
+        con.commit()
+
+        # Confirma individualmente os vínculos gravados. A consulta do relatório
+        # usa os vínculos do SQLite, e não a lista de funcionários em memória.
+        vinculados = {r['funcionario_id'] for r in con.execute(
+            'SELECT funcionario_id FROM escalas_especiais_funcionarios WHERE escala_id=?',
+            (escala['id'],)
+        ).fetchall()}
+        ids_confirmados = set(validos) & vinculados
+        total_vinculados = len(vinculados)
+        faltantes = set(validos) - ids_confirmados
+        if faltantes:
+            raise RuntimeError('Não foi possível confirmar a inclusão de todos os funcionários selecionados.')
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
+    flash(
+        f'{adicionados} funcionário(s) adicionado(s) à escala como pendente(s). '
+        f'Total de funcionários na escala: {total_vinculados}.'
+    )
+
+
+def escala_especial_relatorio(escala):
+    """Consulta compacta da escala, com indicadores e cartões enxutos."""
+    dados_escala, dados = _escala_carregar_relatorio(escala['id'])
+    if dados_escala is None:
+        flash('A escala selecionada não existe mais.', erro=True)
+        return
+
+    totais = {c: sum(1 for x in dados if x['situacao'] == c) for c in ('T', 'N', 'P')}
+    grupos = _escala_dados_cobertura(dados)
+    altura = max(3, _rows() - 12)
+
+    paginas, atual, usadas = [], [], 0
+    for item in dados:
+        custo = 1
+        if atual and usadas + custo > altura:
+            paginas.append(atual)
+            atual, usadas = [], 0
+        atual.append(item)
+        usadas += custo
+    if atual or not paginas:
+        paginas.append(atual)
+
+    idx = 0
+    while True:
+        limpar(); topo()
+        _ln(_c_title(dados_escala['titulo']), 'center')
+        _ln(_c_muted(f"{dados_escala['tipo']} • {dados_escala['inicio']} a {dados_escala['fim']}"), 'center')
+        _ln(_c_muted(f"{idx + 1}/{len(paginas)} • {len(dados)} funcionários"), 'center')
+        _div()
+        _ln('  ' + _c_success(f"● {totais['T']} trabalharão") + '  ' +
+            _c_error(f"● {totais['N']} não trabalharão") + '  ' +
+            _c_warning(f"● {totais['P']} pendentes"))
+        _ln('  ' + _c_muted('Abrangência: ') + str(dados_escala['escopo'] or '—'))
+        _dleve()
+        _ln('  ' + _c_title('COBERTURA'))
+        for chave, grupo in grupos.items():
+            if grupo['T'] > 0 and grupo['P'] == 0:
+                estado = _c_success('CONFIRMADA')
+            elif grupo['T'] == 0 and grupo['P'] == 0:
+                estado = _c_error('SEM COBERTURA')
+            else:
+                estado = _c_warning('PENDÊNCIAS')
+            nome_unidade = f"{chave[0]} / {chave[1]}" if isinstance(chave, tuple) else str(chave)
+            _ln('  ' + _c_menu(nome_unidade) + '  ' +
+                _c_success(f"{grupo['T']} trabalham") + ' / ' +
+                _c_error(f"{grupo['N']} não") + ' / ' +
+                _c_warning(f"{grupo['P']} pendentes") + '  ' + estado)
+        _dleve()
+        _ln('  ' + _c_title('FUNCIONÁRIOS'))
+        for item in paginas[idx]:
+            cod = item['situacao']
+            status = _c_success('TRABALHARÁ') if cod == 'T' else (
+                _c_error('NÃO TRABALHARÁ') if cod == 'N' else _c_warning('PENDENTE'))
+            setor = str(item['setor'] or 'Sem setor')
+            subsetor = str(item['subsetor'] or 'Sem subsetor')
+            _ln('  ' + _c_menu(item['nome']) + '  ' +
+                _c_muted(f"{setor} / {subsetor} • {item['vinculo'] or '—'}") + '  ' + status)
+        _dleve()
+        _ln(_c_muted(_pagina_nav(idx, len(paginas))), 'center')
+        fundo()
+        cmd = inp('Navegação: ').strip().lower()
+        if cmd in ('0', ''):
+            break
+        if cmd in ('p', 'd') and idx < len(paginas) - 1:
+            idx += 1
+        elif cmd in ('a', 'q') and idx > 0:
+            idx -= 1
+        else:
+            flash('Não há outra página nessa direção.', erro=True)
+
+
+def escala_especial_gerenciar(d):
+    escala = _escala_selecionar_evento()
+    if not escala: return
+    while True:
+        registros = _escala_funcionarios(escala['id'])
+        total_t = sum(1 for r in registros if r['situacao'] == 'T')
+        total_n = sum(1 for r in registros if r['situacao'] == 'N')
+        total_p = sum(1 for r in registros if r['situacao'] == 'P')
+        grupos = _escala_dados_cobertura(registros)
+        info = [f"{escala['tipo']} | {escala['inicio']} a {escala['fim']}",
+                f"Trabalhou: {total_t} | Não trabalhou: {total_n} | Pendente: {total_p}"]
+        sem_cobertura = sum(1 for g in grupos.values() if g['T'] == 0 and g['P'] == 0)
+        sem_confirmacao = sum(1 for g in grupos.values() if g['T'] == 0 and g['P'] > 0)
+        info.append(f'Unidades sem cobertura: {sem_cobertura} | Sem confirmação: {sem_confirmacao}')
+        itens = [(1, 'Marcar funcionários que trabalharam'),
+                 (2, 'Marcar funcionários que não trabalharam'),
+                 (3, 'Marcar como pendente'),
+                 (4, 'Adicionar funcionários à escala'),
+                 (5, 'Consultar relatório'),
+                 (6, 'Excluir escala')]
+        _render_menu(f"ESCALA: {escala['titulo']}", itens, info=info, rodape=[(0, t('voltar'))])
+        op = inp(t('opcao')).strip()
+        if op == '1': escala_especial_atualizar(d, escala, 'T')
+        elif op == '2': escala_especial_atualizar(d, escala, 'N')
+        elif op == '3': escala_especial_atualizar(d, escala, 'P')
+        elif op == '4': escala_especial_adicionar(d, escala)
+        elif op == '5': escala_especial_relatorio(escala)
+        elif op == '6':
+            if inp('Confirma a exclusão desta escala? (s/n): ').strip().lower() == t('sim'):
+                con = _conn()
+                try:
+                    con.execute('DELETE FROM escalas_especiais WHERE id=?', (escala['id'],)); con.commit()
+                finally:
+                    con.close()
+                flash('Escala especial excluída.')
+                return
+        elif op == '0': return
+        else: flash(t('invalido'), erro=True)
+
+
+def menu_escalas_especiais(d):
+    while True:
+        eventos = _escala_listar_eventos()
+        pendentes = sum((ev['pendente'] or 0) for ev in eventos)
+        info = [f"Ocasiões cadastradas: {len(eventos)}", f"Registros pendentes: {pendentes}"]
+        _render_menu('ESCALAS ESPECIAIS', [
+            (1, 'Cadastrar feriado enforcado ou recesso'),
+            (2, 'Gerenciar escala e situação dos funcionários'),
+            (3, 'Consultar escalas cadastradas'),
+        ], info=info, rodape=[(0, t('voltar'))])
+        op = inp(t('opcao')).strip()
+        if op == '1': escala_especial_criar(d)
+        elif op == '2': escala_especial_gerenciar(d)
+        elif op == '3':
+            escala = _escala_selecionar_evento(eventos)
+            if escala: escala_especial_relatorio(escala)
+        elif op == '0': return
+        else: flash(t('invalido'), erro=True)
+
+
+# ---------------------------------------------------------------------------
 # Inicialização, login e menu principal
 # ---------------------------------------------------------------------------
 
@@ -4449,7 +5301,9 @@ def tela_login():
             SESSAO['login'] = row['login']
             SESSAO['nome'] = row['nome']
             SESSAO['nivel'] = row['nivel']
+            _auditar_evento('LOGIN', 'autenticacao', 'Acesso autenticado com sucesso.')
             return True
+        _auditar_evento('LOGIN_FALHA', 'autenticacao', f'Login informado: {login or "(vazio)"}; tentativa {tentativa}/3.', 'FALHA')
         flash(t('login_erro'), erro=True)
         if tentativa < 3:
             limpar()
@@ -4469,32 +5323,45 @@ def tela_login():
     return False
 
 def _render_menu_principal(titulo, itens, rodape, info_topo, painel_linhas, alertas_linhas=None):
-    """Tela inicial compacta: menu, status e agenda em blocos distintos."""
-    limpar(); topo(); _ln(_c_title(str(titulo).upper()), 'center'); _div()
-    _ln(_c_muted(t('ui_menu_principal')), 'center'); _dleve()
-    for numero, label in _menu_rows(itens):
-        if numero is not None:
-            _ln(f'  {_c_input(numero)}  {_c_menu(label)}')
+    """Painel inicial compacto com menu em colunas e indicadores coloridos."""
+    limpar(); topo()
+    _ln(_c_title('◆  ' + str(titulo).upper() + '  ◆'), 'center')
+    _ln(_c_muted(t('ui_menu_principal')), 'center'); _div()
+    valid = [i for i in itens if i is not None]
+    metade = (len(valid) + 1) // 2
+    colw = (_larg() - 10) // 2
+    if _larg() >= 84:
+        for i in range(metade):
+            a = valid[i]
+            b = valid[i + metade] if i + metade < len(valid) else None
+            left = f"{_c_input(str(a[0]).rjust(2))}  {_c_menu(a[1])}"
+            if b:
+                right = f"{_c_input(str(b[0]).rjust(2))}  {_c_menu(b[1])}"
+                _ln('  ' + _pl(left, colw) + '   ' + right)
+            else:
+                _ln('  ' + left)
+    else:
+        for numero, label in valid:
+            _ln(f'  {_c_input(str(numero).rjust(2))}  {_c_menu(label)}')
     if info_topo:
-        _dleve(); _ln(_c_muted(t('ui_status')), 'center'); _dleve()
+        _dleve(); _ln(_c_accent('●  ' + t('ui_status')))
         for info in info_topo:
-            _ln(f'  {info}')
+            _ln('   ' + info)
     if alertas_linhas:
-        _dleve(); _ln(_c_error('ALERTAS DO BANCO DE HORAS'), 'center'); _dleve()
+        _dleve(); _ln(_c_error('▲  ALERTAS DO BANCO DE HORAS'))
         for linha in alertas_linhas:
-            _ln(f'  {_c_error(linha)}')
+            _ln('   ' + _c_error(linha))
     if painel_linhas:
-        _dleve(); _ln(_c_muted(t('ui_agenda')), 'center'); _dleve()
+        _dleve(); _ln(_c_accent('▸  ' + t('ui_agenda')))
         for linha in painel_linhas:
-            _ln(f'  {linha}')
+            _ln('   ' + linha)
     if rodape:
         _dleve()
-        for numero, label in _menu_rows(rodape):
-            if numero is not None:
-                _ln(f'  {_c_input(numero)}  {_c_menu(label)}')
+        for numero, label in rodape:
+            _ln(f'  {_c_input(str(numero).rjust(2))}  {_c_accent(label)}')
     msg, erro = _get_flash()
     if msg:
-        _dleve(); _ln(_c_error('✗ '+msg) if erro else _c_success('✓ '+msg))
+        _dleve(); _ln(_c_error('✖ '+msg) if erro else _c_success('✔ '+msg))
     fundo()
 
 
@@ -4541,6 +5408,7 @@ def menu_principal():
             (5, t('m_grafico')),
             (6, t('m_regras')),
             (7, 'Validação, configurações e administração'),
+            (8, 'Escalas especiais — feriados e recesso'),
         ]
         status = t('status_pend', n=n) if n > 0 else t('status_ok')
         n_venc = _contar_vencidas(d)
@@ -4572,6 +5440,9 @@ def menu_principal():
             alertas_linhas=alertas_linhas
         )
         op = inp(t('opcao')).strip()
+        if op in {'1','2','3','4','5','6','7','8'}:
+            rotulos = {'1':'Cadastros','2':'Férias','3':'Banco de horas','4':'Relatórios','5':'Gráficos','6':'Regras','7':'Validação/configurações/administração','8':'Escalas especiais'}
+            _auditar_evento('ACESSO_MODULO', 'navegacao', rotulos.get(op, op))
         if op == '1': menu_cadastros(d)
         elif op == '2': menu_ferias(d)
         elif op == '3': menu_banco_horas(d)
@@ -4579,8 +5450,13 @@ def menu_principal():
         elif op == '5': grafico_evolucao_mensal(d)
         elif op == '6': menu_regras(d)
         elif op == '7': menu_validacao_config_administracao(d, eh_admin)
+        elif op == '8': menu_escalas_especiais(d)
         elif op == '0': break
         else: flash(t('invalido'), erro=True)
+    _auditar_evento('LOGOUT', 'autenticacao', 'Encerramento normal da sessão.')
+    SESSAO['login'] = None
+    SESSAO['nome'] = None
+    SESSAO['nivel'] = None
     limpar(); p('Encerrando.'); p()
 
 def main():
