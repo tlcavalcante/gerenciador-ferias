@@ -1,22 +1,20 @@
 # Arquitetura
 
-A versão 4.3.0 é uma aplicação CLI autônoma em `gerenciador_ferias.py`. A lógica de interface, regras de férias, autenticação, persistência SQLite, relatórios, banco de horas e backups está no arquivo principal para permitir distribuição simples sem dependências externas.
+## Visão geral
+Aplicação CLI em Python, distribuída em script autônomo gerenciador_ferias.py e sem dependências externas de execução. O script concentra interface, regras de férias, autenticação, persistência, relatórios, Banco de Horas, escalas especiais e auditoria. O ponto de entrada é main().
 
 ## Persistência
+O SQLite é acessado por _conn() e inicializado/migrado por _init_banco(). Entre as entidades estão funcionarios, setores, subsetores, vinculos, ferias, regras, banco_horas, escalas_especiais, escalas_especiais_funcionarios, usuarios, configuracoes e trilha_auditoria.
 
-O SQLite mantém tabelas de setores, subsetores, vínculos, funcionários, férias, regras, configurações, usuários e lançamentos de banco de horas. O banco é inicializado por `_init_banco()`.
+As conexões habilitam integridade referencial. A inicialização cria tabelas e índices ausentes, preservando os dados existentes.
 
-O diretório de dados é resolvido nesta ordem:
-1. `GERENCIADOR_FERIAS_DATA_DIR`, quando definido;
-2. `$XDG_DATA_HOME/gerenciador-ferias`, quando `XDG_DATA_HOME` estiver definido;
-3. `~/.local/share/gerenciador-ferias`.
+## Diretório de dados
+A localização é resolvida por GERENCIADOR_FERIAS_DATA_DIR, depois XDG_DATA_HOME/gerenciador-ferias e, por padrão, ~/.local/share/gerenciador-ferias. Backups ficam no subdiretório backups/. O diretório de dados deve permanecer separado do código-fonte.
 
-Os backups são cópias consistentes criadas pela API de backup do SQLite e ficam no subdiretório `backups/`.
+## Auditoria
+A tabela trilha_auditoria recebe eventos por gatilhos AFTER INSERT, AFTER UPDATE e AFTER DELETE nas tabelas existentes, exceto a própria trilha. Eventos de autenticação e navegação são registrados por _auditar_evento(). As alterações incluem estado anterior e posterior. Campos de senha, hash, token e segredo são excluídos.
 
-## Segurança
+A consulta é restrita a administradores. Como os registros residem no mesmo SQLite da aplicação, a trilha não é inviolável: quem puder escrever no arquivo poderá alterar ou remover eventos. Requisitos de auditoria forte exigem armazenamento externo com controle de acesso independente.
 
-As senhas novas são derivadas com PBKDF2-HMAC-SHA256 e salt aleatório. Não há credencial administrativa padrão; o administrador é criado na primeira execução. A validação de entradas e as consultas SQL parametrizadas devem ser mantidas nos novos recursos.
-
-## Compatibilidade
-
-Os módulos históricos permanecem disponíveis para testes de regressão. O comando instalado pelo pacote aponta para `gerenciador_ferias:main`.
+## Segurança e compatibilidade
+Senhas são derivadas por PBKDF2-HMAC-SHA256 com salt aleatório. Não há credencial administrativa padrão. Consultas com dados externos devem usar parâmetros SQL. O script requer Python 3.9 ou superior e utiliza a biblioteca padrão.
