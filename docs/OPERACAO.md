@@ -1,37 +1,26 @@
-# Guia de operação — versão 4.3.9
+# Guia de operação — versão 4.8.2
 
-## Menu principal
+## Módulos
+- Cadastros: funcionários, setores, subsetores e vínculos.
+- Férias: agendamento, cancelamento, calendário e consultas.
+- Banco de Horas: movimentações, ajustes, saldos e extratos.
+- Relatórios: consultas de férias e Banco de Horas.
+- Regras de férias: parâmetros por nível de abrangência.
+- Validação, configurações e administração: validações, preferências, usuários, backup e auditoria.
+- Escalas especiais: planejamento de cobertura em feriados prolongados, recessos e outras ocasiões.
 
-O menu principal foi simplificado e renumerado. A opção independente “Painel de férias” foi removida; os recursos de consulta e alertas permanecem nos fluxos apropriados.
-
-- **Cadastros:** manutenção de funcionários, setores e subsetores, conforme permissões.
-- **Férias:** operações e consultas de períodos de férias.
-- **Banco de Horas:** movimentações, consulta de saldo, ajustes, extratos e relatórios.
-- **Relatórios:** relatórios de férias e acesso aos relatórios do Banco de Horas.
-- **Gráfico de evolução mensal:** visualização de evolução mensal disponível no aplicativo.
-- **Regras de férias:** consulta e manutenção de regras.
-- **Validação, configurações e administração:** reúne validação automática, configurações e funções administrativas. As funções restritas continuam sujeitas ao perfil de administrador.
-- **Sair:** encerra a aplicação.
-
-A disponibilidade das funções depende do perfil. Não contorne controles de autorização.
+## Férias coincidentes
+O relatório compara períodos de funcionários diferentes no escopo selecionado. Cada ocorrência apresenta os funcionários, suas unidades, períodos originais, intervalo comum e quantidade de dias coincidentes. As datas inicial e final são consideradas no cálculo.
 
 ## Banco de Horas
+Os valores são informados em HH:MM. Confira funcionário, data, sinal e justificativa antes de confirmar crédito, débito ou ajuste.
 
-### Ajuste por diferença
+Na conciliação com relatório mensal, o sistema calcula e registra somente a diferença entre o saldo atual e o saldo informado. Exemplo: saldo atual +12:30, saldo informado +08:00, ajuste -04:30 e saldo resultante +08:00.
 
-Use para acrescentar ou subtrair horas do saldo atual. Confira o sinal e informe uma justificativa antes de confirmar.
+Os rankings apresentam posição, funcionário, unidade organizacional e saldo em formato compacto. O resumo e os indicadores ficam na tela inicial dos relatórios. A preferência para ocultar ou exibir saldos zerados é persistente.
 
-### Definir saldo final conforme relatório mensal
+## Escalas especiais
+Cadastre a ocasião, intervalo e escopo. A situação pode ser trabalhou, não trabalhou ou pendente. Se a situação variar durante o intervalo, registre períodos distintos. Escalas não alteram automaticamente férias ou Banco de Horas.
 
-Use quando o relatório mensal oficial informar o saldo atualizado. O sistema calcula a diferença entre o saldo atual e o saldo informado e registra somente essa diferença como ajuste, preservando o histórico.
-
-Exemplo: saldo atual `+12:30`, saldo do relatório `+08:00`, ajuste `-04:30`, saldo resultante `+08:00`.
-
-Confirme colaborador, saldo, sinal e justificativa. A operação deve ser realizada por usuário autorizado.
-
-## Relatórios e rankings
-
-- Tabelas são utilizadas nos relatórios; telas operacionais mantêm a apresentação textual apropriada.
-- Rankings completos não devem ser interpretados como Top 25.
-- A preferência para ocultar/exibir saldos zerados é configurada em **Configurações do sistema** e permanece salva entre acessos.
-- Saldos negativos e saldos que atingem ou ultrapassam o limite crítico são destacados em vermelho em terminais compatíveis com ANSI. Confira sempre os valores numéricos.
+## Trilha de auditoria
+A consulta fica no menu Administração e exige perfil administrador. Exibe os eventos mais recentes, data/hora, usuário, ação, entidade, identificador e detalhes. Consulte AUDITORIA.md para cobertura e limitações.
