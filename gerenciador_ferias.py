@@ -997,7 +997,8 @@ def carregar_dados():
     for fr in c.execute('SELECT id,nome,setor,subsetor,vinculo,data_admissao FROM funcionarios ORDER BY id').fetchall():
         ferias = []
         for pr in c2.execute('SELECT inicio,fim,venda_ferias FROM ferias WHERE funcionario_id=? ORDER BY id', (fr['id'],)):
-            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
+            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})
+        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
     CR = _campos_regras()
     regras = _regras_padrao()
     for rr in c.execute('SELECT nivel,referencia,campo,valor FROM regras'):
@@ -1996,7 +1997,8 @@ def painel_ferias(d):
         itens.append({'tipo': 'vazio_ag'})
     itens.append({'tipo': 'secao', 'txt': t('painel_30dias')})
     if em_30dias:
-        for r in em_30dias:            itens.append({'tipo': 'em30', **r})
+        for r in em_30dias:
+            itens.append({'tipo': 'em30', **r})
     else:
         itens.append({'tipo': 'vazio_30'})
 
@@ -2995,7 +2997,8 @@ def cancelar_ferias(d):
             return
         idx = e - 1
         if 0 <= idx < len(ferias_ord):
-            rm = ferias_ord[idx]            func['ferias'] = [f for f in func['ferias'] if not (f['inicio'] == rm['inicio'] and f['fim'] == rm['fim'])]
+            rm = ferias_ord[idx]
+            func['ferias'] = [f for f in func['ferias'] if not (f['inicio'] == rm['inicio'] and f['fim'] == rm['fim'])]
             salvar_dados(d)
             flash(f"{rm['inicio']} → {rm['fim']} — " + t('fer_removida'))
         else:
@@ -3994,7 +3997,8 @@ def _editar_bloco(bloco, titulo_tela, parent=None):
                 _ln(f"  {t('reg_herdar')}: {vr} ({t('reg_niv_sup')})")
                 _lvz()
                 fundo()
-                p()                r = inp(t('reg_num_h')).strip()
+                p()
+                r = inp(t('reg_num_h')).strip()
             else:
                 _ln(f"  {t('reg_atual')}: {(atual if atual is not None else meta['padrao'])}")
                 _lvz()
@@ -4993,7 +4997,8 @@ def _escala_dados_cobertura(registros):
 
 def _escala_texto_cobertura(grupos):
     """Gera linhas consistentes: uma linha por combinação setor/subsetor."""
-    linhas = []    for (setor, subsetor), g in sorted(
+    linhas = []
+    for (setor, subsetor), g in sorted(
         grupos.items(), key=lambda item: (item[0][0].casefold(), item[0][1].casefold())
     ):
         if g['T'] == 0:
