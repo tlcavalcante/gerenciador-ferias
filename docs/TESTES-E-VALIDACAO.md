@@ -1,50 +1,60 @@
-# Checklist de testes e validação — versão 4.3.9
+# Checklist de testes e validação — versão 4.8.2
 
 ## Limite da validação
-
-A compilação sintática foi verificada na preparação do pacote. Os testes funcionais completos não foram executados como parte da preparação. Marque os itens somente após executá-los em homologação.
+A compilação sintática e testes pontuais de inicialização SQLite e trilha foram executados durante a preparação. A suíte funcional completa e a homologação interativa ainda precisam ser executadas. Marque itens somente após execução.
 
 ## Preparação e autenticação
-
-- [ ] Usar uma cópia isolada do banco, nunca a única cópia de produção.
-- [ ] Confirmar backup restaurável.
+- [ ] Usar cópia isolada do banco e confirmar backup restaurável.
 - [ ] Aplicativo inicia sem erro.
-- [ ] Criação do administrador inicial e autenticação funcionam.
+- [ ] Criação inicial de administrador e autenticação.
 - [ ] Usuário sem perfil administrativo não acessa funções restritas.
+- [ ] Login inválido é registrado sem armazenar senha.
 
-## Menus e relatórios
-
-- [ ] Menu principal tem numeração sequencial e não apresenta opção independente “Painel de férias”.
-- [ ] Submenu de validação/configurações/administração funciona.
-- [ ] Relatórios de férias e Banco de Horas são acessíveis.
-- [ ] Tabelas aparecem nos relatórios, não indiscriminadamente nas telas operacionais.
-- [ ] Relatórios por funcionário, setor, subsetor, período e situação apresentam dados coerentes.
+## Cadastros e férias
+- [ ] Inclusão, alteração e exclusão de funcionários, setores, subsetores e vínculos.
+- [ ] Agendamento, cancelamento e consulta de férias.
+- [ ] Validações de regras e limites.
+- [ ] Relatórios por funcionário, setor, subsetor, período e situação.
+- [ ] Férias coincidentes: filtros, datas e quantidade de dias.
 
 ## Banco de Horas
-
 - [ ] Movimentações positivas e negativas preservam sinal e histórico.
 - [ ] Ajuste por diferença calcula saldo final correto.
-- [ ] Conciliação de `+12:30` para `+08:00` registra `-04:30` e resulta em `+08:00`.
-- [ ] Conciliação de saldo negativo para positivo e vice-versa é testada.
-- [ ] Justificativa e confirmação são exigidas.
-- [ ] Rankings gerais, positivos e negativos exibem todos os colaboradores elegíveis, sem limite Top 25.
-- [ ] Preferência de ocultar saldos zerados persiste após sair e reabrir os relatórios.
-- [ ] Com a preferência ativa, saldos zerados são suprimidos de relatórios/rankings aplicáveis; desativada, são exibidos.
-- [ ] Saldos negativos e no/acima do limite crítico são destacados em vermelho.
-- [ ] Tabela de saldos funciona para todos os funcionários e filtros por setor/subsetor.
+- [ ] Conciliação de +12:30 para +08:00 registra -04:30.
+- [ ] Conciliação entre saldos positivos e negativos.
+- [ ] Justificativa e confirmação exigidas.
+- [ ] Rankings e indicadores apresentam valores coerentes.
+- [ ] Preferência de ocultação de saldos zerados persiste após reiniciar.
+- [ ] Alertas de saldo negativo e limite crítico.
+
+## Escalas especiais
+- [ ] Criar escala de data única e de intervalo.
+- [ ] Selecionar escopo por empresa, setor, subsetor e funcionários.
+- [ ] Marcar trabalhou, não trabalhou e pendente.
+- [ ] Adicionar funcionários sem sobrescrever situações existentes.
+- [ ] Conferir totais e cobertura por unidade.
+- [ ] Excluir evento e conferir integridade referencial.
+
+## Trilha de auditoria
+- [ ] Inclusões, alterações e exclusões geram eventos.
+- [ ] Usuário e data/hora são identificados.
+- [ ] Alterações apresentam dados anteriores e posteriores.
+- [ ] Login, falha de login, acesso administrativo e logout são registrados.
+- [ ] Hashes, senhas e tokens não aparecem nos detalhes.
+- [ ] Consulta restrita a administradores.
+- [ ] Registros permanecem disponíveis após reiniciar.
 
 ## Dados e backup
-
 - [ ] Banco e backups permanecem no diretório configurado.
-- [ ] Backup é criado e restaurado em base de teste.
-- [ ] Nenhum dado real de produção foi incluído no repositório.
+- [ ] Backup criado e restaurado em base de teste.
+- [ ] Atualização preserva dados existentes.
+- [ ] Nenhum dado real incluído no repositório.
 
-## Registro
-
-- Data:
-- Responsável:
-- Ambiente:
-- Versão anterior:
-- Versão testada:
-- Resultado: [ ] Aprovado [ ] Reprovado
-- Falhas/evidências:
+## Registro da homologação
+Data:
+Responsável:
+Ambiente:
+Versão anterior:
+Versão testada:
+Resultado: [ ] Aprovado [ ] Reprovado
+Falhas/evidências:

@@ -1,33 +1,23 @@
 # Procedimento de atualização
 
 ## Antes de atualizar
-
-1. Identifique o diretório de dados: `GERENCIADOR_FERIAS_DATA_DIR`, depois `$XDG_DATA_HOME/gerenciador-ferias`, caso definido, ou `~/.local/share/gerenciador-ferias`.
+1. Identifique o diretório de dados: GERENCIADOR_FERIAS_DATA_DIR, XDG_DATA_HOME/gerenciador-ferias ou ~/.local/share/gerenciador-ferias.
 2. Encerre o aplicativo e confirme que não há processo escrevendo no banco.
-3. Faça backup de `dados_ferias.db` e do diretório `backups/`.
-4. Guarde uma cópia do script anterior para reversão.
+3. Faça backup de dados_ferias.db e do diretório backups/.
+4. Guarde uma cópia do script anterior.
 5. Registre versão anterior, horário e responsável.
 
-## Validar o código
-
-```bash
-python3 --version
-python3 -m py_compile gerenciador_ferias.py
-```
-
-A compilação verifica a sintaxe, não todas as funções. Execute os testes de [TESTES-E-VALIDACAO.md](TESTES-E-VALIDACAO.md) em homologação, usando uma cópia do banco.
+## Validar
+Execute python3 --version e python3 -m py_compile gerenciador_ferias.py. A compilação verifica sintaxe, não todas as funções. Execute o checklist de docs/TESTES-E-VALIDACAO.md em homologação com cópia do banco.
 
 ## Instalar
-
-1. Substitua o script da instalação pelo arquivo aprovado `gerenciador_ferias.py`.
-2. Preserve o diretório de dados existente; não o apague nem o inclua no Git.
-3. Inicie o programa e valide autenticação, cadastros, férias e Banco de Horas.
-4. Confira a configuração de ocultação de saldos zerados, os rankings e a conciliação de saldo final.
+1. Substitua o script da instalação pelo arquivo aprovado gerenciador_ferias.py.
+2. Preserve o diretório de dados existente.
+3. Inicie o programa e valide autenticação, cadastros, férias, Banco de Horas, escalas e auditoria.
+4. Confira se a trilha registra os eventos esperados.
 
 ## Reversão
-
-Se ocorrer erro, encerre o aplicativo e restaure o script anterior. Restaure o banco apenas se houver evidência de corrupção ou alteração incompatível, mantendo uma cópia do estado atual para análise. Não repita a atualização em produção antes de reproduzir o problema em homologação.
+Em caso de erro, encerre o aplicativo e restaure o script anterior. Restaure o banco somente se houver evidência de corrupção ou incompatibilidade, mantendo cópia do estado atual para análise. Reproduza o problema em homologação antes de nova tentativa.
 
 ## Proteção de dados
-
-Use dados fictícios ou anonimizados nos testes. Não adicione ao Git banco de dados, backups, exportações com nomes reais, logs sensíveis ou credenciais.
+Use dados fictícios ou anonimizados nos testes. Não adicione ao Git banco, backups, exportações com nomes reais, logs sensíveis ou credenciais.
