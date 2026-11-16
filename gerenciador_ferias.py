@@ -997,7 +997,8 @@ def carregar_dados():
     for fr in c.execute('SELECT id,nome,setor,subsetor,vinculo,data_admissao FROM funcionarios ORDER BY id').fetchall():
         ferias = []
         for pr in c2.execute('SELECT inicio,fim,venda_ferias FROM ferias WHERE funcionario_id=? ORDER BY id', (fr['id'],)):
-            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
+            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})
+        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
     CR = _campos_regras()
     regras = _regras_padrao()
     for rr in c.execute('SELECT nivel,referencia,campo,valor FROM regras'):
@@ -1996,7 +1997,8 @@ def grafico_evolucao_mensal(d):
                 [f for f in d['funcionarios']
                  if f.get('setor', '') == setor and f.get('subsetor', '') == subsetor], n_meses)
             for subsetor in subsetores
-        }        max_global = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=0) or 1
+        }
+        max_global = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=0) or 1
         total_geral = sum(m['total_dias'] for ev in ev_map.values() for m in ev)
         ativos_geral = sum(1 for i in range(n_meses)
                            if any(ev[i]['total_dias'] > 0 for ev in ev_map.values()))
@@ -2995,7 +2997,8 @@ def bh_ajustar_saldo(d):
         if saldo_final is None:
             flash('Saldo final inválido. Use HH:MM com sinal opcional; 00:00 é permitido.', erro=True); return
         delta = saldo_final - saldo_atual
-        origem = 'Conciliação com relatório mensal'    if delta == 0:
+        origem = 'Conciliação com relatório mensal'
+    if delta == 0:
         flash('O saldo informado já corresponde ao saldo calculado. Nenhum ajuste foi lançado.')
         return
     motivo = inp(t('bh_motivo')).strip()
@@ -3994,7 +3997,8 @@ def rel_por_ano_civil(d):
         funcs_base = ord_funcs(d, [f for f in d['funcionarios'] if f['setor'] == setor])
         filtro_label = f'Setor: {setor}'
     elif op == '3':
-        setor = sel_setor(d)        if not setor:
+        setor = sel_setor(d)
+        if not setor:
             return
         sub = sel_sub(d, setor)
         if not sub:
@@ -4993,7 +4997,8 @@ def _escala_selecionar_evento(eventos=None):
 
 
 def _escala_selecao_multipla(rotulo, opcoes):
-    """Seleciona várias opções por números separados por vírgula ou * para todas."""    opcoes = list(opcoes)
+    """Seleciona várias opções por números separados por vírgula ou * para todas."""
+    opcoes = list(opcoes)
     if not opcoes:
         return []
     limpar(); titulo_box(rotulo); _lvz()
