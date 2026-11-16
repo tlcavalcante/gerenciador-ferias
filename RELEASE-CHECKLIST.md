@@ -1,7 +1,8 @@
-# Checklist de release — versão 4.8.2
+# Checklist de release — versão 4.8.3
 
 ## Código e documentação
 - [x] Script autônomo atualizado.
+- [x] Seleção individual e múltipla padronizada para nome, setor, subsetor e vínculo.
 - [x] Versão do código e metadados do pacote alinhados.
 - [x] Documentação técnica, operacional, segurança e histórico revisados.
 - [x] Trilha de auditoria documentada.
@@ -10,6 +11,9 @@
 - [ ] Instalação do pacote testada em ambiente virtual limpo.
 
 ## Homologação
+- [ ] Conferir seleção individual em cadastros, férias, relatórios, validação e Banco de Horas.
+- [ ] Conferir seleção múltipla em relatórios e escalas especiais.
+- [ ] Conferir adição, remoção e seleção de todos na seleção múltipla.
 - [ ] Login, logout, criação inicial de administrador e perfis.
 - [ ] Inclusão, alteração e exclusão de cadastros.
 - [ ] Agendamento, cancelamento e consulta de férias.
