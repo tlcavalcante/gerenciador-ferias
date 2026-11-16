@@ -1,33 +1,34 @@
-# Checklist de release — versão 4.8.3
+# Checklist de release — versão 4.8.5
 
 ## Código e documentação
-- [x] Script autônomo atualizado.
-- [x] Seleção individual e múltipla padronizada para nome, setor, subsetor e vínculo.
-- [x] Versão do código e metadados do pacote alinhados.
-- [x] Documentação técnica, operacional, segurança e histórico revisados.
-- [x] Trilha de auditoria documentada.
-- [ ] Suíte automatizada integral executada em ambiente limpo.
-- [ ] Compatibilidade validada em todas as versões Python declaradas.
+- [x] Script autônomo atualizado para 4.8.5.
+- [x] Cabeçalho, constante `APP_VERSION` e metadados do pacote alinhados.
+- [x] Gráficos de evolução mensal e gráfico divergente do Banco de Horas documentados.
+- [x] Guia operacional, checklist de validação e histórico de versões atualizados.
+- [x] Testes automatizados de layout dos gráficos adicionados.
+- [ ] Revisão final do diff e CI concluída.
+
+## Validação local registrada
+- [x] Compilação sintática do script.
+- [x] Testes pontuais de barras horizontais e divergentes.
+- [x] Teste de quebra dos indicadores conforme a largura configurada.
+- [x] Testes automatizados locais executados (8 testes).
+- [ ] Suíte executada em todas as versões Python declaradas.
 - [ ] Instalação do pacote testada em ambiente virtual limpo.
 
-## Homologação
-- [ ] Conferir seleção individual em cadastros, férias, relatórios, validação e Banco de Horas.
-- [ ] Conferir seleção múltipla em relatórios e escalas especiais.
-- [ ] Conferir adição, remoção e seleção de todos na seleção múltipla.
-- [ ] Login, logout, criação inicial de administrador e perfis.
-- [ ] Inclusão, alteração e exclusão de cadastros.
-- [ ] Agendamento, cancelamento e consulta de férias.
-- [ ] Relatório de férias coincidentes e filtros.
-- [ ] Lançamentos, ajustes, extratos, rankings e conciliação do Banco de Horas.
-- [ ] Criação, alteração, consulta e exclusão de escalas especiais.
-- [ ] Auditoria: usuário, data/hora, ação e estados anterior/posterior.
-- [ ] Confirmar ausência de senhas, hashes e tokens na trilha.
-- [ ] Controle de acesso à consulta de auditoria.
-- [ ] Backup, restauração e atualização sobre banco preexistente.
+## Homologação funcional
+- [ ] Conferir gráficos em terminal real, com diferentes larguras e configurações de cor.
+- [ ] Conferir evolução da empresa, detalhe mensal, setores, subsetores e funcionários.
+- [ ] Conferir gráfico divergente com saldos positivos, negativos e zerados.
+- [ ] Conferir cálculos, filtros, paginação e ordenação do Banco de Horas.
+- [ ] Revalidar seletores de funcionários, cadastros e férias.
+- [ ] Login, logout, perfis, backup e restauração.
+- [ ] Escalas especiais e trilha de auditoria.
 
 ## Publicação
 - [ ] CI concluída com sucesso.
 - [ ] Revisão final do diff.
+- [ ] PR aprovado e integrado.
 - [ ] Tag/release criada após aprovação.
 
 Compilação sintática e testes pontuais não comprovam o funcionamento integral. Não marque itens pendentes sem evidência.
