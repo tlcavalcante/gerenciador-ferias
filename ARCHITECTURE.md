@@ -8,6 +8,11 @@ O SQLite é acessado por _conn() e inicializado/migrado por _init_banco(). Entre
 
 As conexões habilitam integridade referencial. A inicialização cria tabelas e índices ausentes, preservando os dados existentes.
 
+## Apresentação dos gráficos
+Os gráficos são renderizados no terminal pelas funções auxiliares `_barra_grafico()`, `_linha_grafico_mensal()`, `_grafico_indicadores()` e `_barra_saldo_bh()`. As barras mensais são proporcionais à escala definida para cada visão; comparações organizacionais calculam escala comum entre os setores ou subsetores da seleção. O gráfico do Banco de Horas usa eixo divergente central, com valores negativos e positivos em lados opostos. Os indicadores se reorganizam conforme a largura disponível e as cores respeitam o modo sem ANSI.
+
+Os cálculos de evolução são separados da renderização: `_evolucao_empresa()` agrega dias, funcionários com férias e pico simultâneo por mês; `_evolucao_func()` calcula dias mensais e acumulados por funcionário. A interface oferece janelas de 3, 6, 12 ou 24 meses.
+
 ## Diretório de dados
 A localização é resolvida por GERENCIADOR_FERIAS_DATA_DIR, depois XDG_DATA_HOME/gerenciador-ferias e, por padrão, ~/.local/share/gerenciador-ferias. Backups ficam no subdiretório backups/. O diretório de dados deve permanecer separado do código-fonte.
 
