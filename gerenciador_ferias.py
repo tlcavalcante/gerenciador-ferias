@@ -3,7 +3,7 @@
 """
 Gerenciador de Férias — aplicação CLI para equipes Linux.
 
-Versão: 4.8.3
+Versão: 4.8.5
 
 Aplicação local, sem dependências externas, baseada em SQLite. O programa
 mantém o histórico de férias, regras, usuários, relatórios, validações,
@@ -43,7 +43,7 @@ for _locale_name in ('pt_BR.UTF-8', 'pt_BR'):
     except locale.Error:
         continue
 APP_NAME = 'gerenciador-ferias'
-APP_VERSION = '4.8.3'
+APP_VERSION = '4.8.5'
 
 def _data_dir() -> Path:
     configured = os.environ.get('GERENCIADOR_FERIAS_DATA_DIR')
@@ -997,8 +997,7 @@ def carregar_dados():
     for fr in c.execute('SELECT id,nome,setor,subsetor,vinculo,data_admissao FROM funcionarios ORDER BY id').fetchall():
         ferias = []
         for pr in c2.execute('SELECT inicio,fim,venda_ferias FROM ferias WHERE funcionario_id=? ORDER BY id', (fr['id'],)):
-            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})
-        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
+            ferias.append({'inicio': pr['inicio'], 'fim': pr['fim'], 'venda_ferias': bool(pr['venda_ferias'])})        funcs.append({'_id': fr['id'], 'nome': fr['nome'], 'setor': fr['setor'], 'subsetor': fr['subsetor'], 'vinculo': fr['vinculo'], 'data_admissao': fr['data_admissao'] or '', 'ferias': ferias})
     CR = _campos_regras()
     regras = _regras_padrao()
     for rr in c.execute('SELECT nivel,referencia,campo,valor FROM regras'):
@@ -1196,6 +1195,25 @@ def sel_sub(d, setor):
     if e == 0: return None
     if 1 <= e <= len(subs): return subs[e-1]
     flash(t('fora_intervalo'), erro=True); return None
+
+def _identificacao_funcionario(func):
+    """Retorna Nome | Setor | Subsetor | Vínculo para dicts e sqlite3.Row."""
+    def valor(campo, padrao):
+        try:
+            dado = func.get(campo)
+        except AttributeError:
+            try:
+                dado = func[campo]
+            except (KeyError, IndexError, TypeError):
+                dado = None
+        return str(dado or padrao).strip()
+
+    nome = valor('nome', 'Nome não informado')
+    setor = valor('setor', 'Sem setor')
+    subsetor = valor('subsetor', 'Sem subsetor')
+    vinculo = valor('vinculo', 'Sem vínculo')
+    return f'{nome} | {setor} | {subsetor} | {vinculo}'
+
 
 def _rotulo_funcionario_selecao(func):
     """Monta a identificação padronizada usada nas listas de seleção."""
@@ -1402,11 +1420,13 @@ def _contar_vencidas(d):
         return 0
 
 def _barra_progresso(tirados, max_d, largura=18):
+    """Indicador compacto de progresso, alinhado ao tema visual dos gráficos."""
     if not max_d or max_d <= 0:
         return None
-    fill = round(min(tirados, max_d) / max_d * largura)
-    barra = '█' * fill + '░' * (largura - fill)
-    pct = round(min(tirados, max_d) / max_d * 100)
+    proporcao = max(0, min(float(tirados) / float(max_d), 1.0))
+    fill = round(proporcao * largura)
+    barra = _c('▰' * fill, 'success', True) + _c('▱' * (largura - fill), 'muted')
+    pct = round(proporcao * 100)
     return (barra, pct)
 
 def _linha_periodo_atual(func, d):
@@ -1498,7 +1518,7 @@ def validar_agendamento(d, func, inicio, fim):
             io, fo = (conv_data(f['inicio']), conv_data(f['fim']))
             if io and fo and sobrepoem(inicio, fim, io, fo):
                 cnt.append(o)
-                nomes.append(o['nome'])
+                nomes.append(_identificacao_funcionario(o))
                 break
     if not pc and cnt:
         erros.append(f"Férias simultâneas não permitidas no subsetor '{subsetor}'. Conflito: {', '.join(nomes)}.")
@@ -1536,7 +1556,7 @@ def auditar_func(d, func):
                 io, fo = (conv_data(of['inicio']), conv_data(of['fim']))
                 if io and fo and sobrepoem(ini, fim, io, fo):
                     cnt += 1
-                    nomes.append(o['nome'])
+                    nomes.append(_identificacao_funcionario(o))
                     break
         if not pc and cnt > 0:
             ep.append(f"Simultânea com {', '.join(nomes)} (não permitido).")
@@ -1608,10 +1628,8 @@ def _status_ferias(func):
 def _render_func_simples(func, d):
     an = analise_periodo_atual(d, func)
     pas, atu, fut = classificar_ferias(func)
-    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
     _lvz()
-    _ln(f"  › {func['nome']}{v}")
-    _ln(f"    {func['setor']}  →  {func['subsetor']}")
+    _ln(f"  › {_identificacao_funcionario(func)}")
     _ln(_linha_periodo_atual(func, d))
     if atu:
         _ln(f"    Em férias: {atu[0]['inicio']} até {atu[0]['fim']}")
@@ -1625,14 +1643,10 @@ def _render_func_individual(func, d):
     pas, atu, fut = classificar_ferias(func)
     per = calc_periodos_aquisitivos(func)
     sit = situacao_geral_func(func)
-    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
     sit_txt = {'vencida': f"[!] {t('ferias_vencidas')}", 'a_vencer': f"[~] {t('ferias_a_vencer')}", 'pendente': f"[?] {t('ferias_pendentes')}", 'ok': f"[✓] {t('ferias_em_dia')}", 'sem_admissao': f"[–] {t('sem_admissao')}"}.get(sit, '')
     _dleve()
-    _ln(f"  {func['nome']}{v}", 'center')
+    _ln(f"  {_identificacao_funcionario(func)}", 'center')
     _dleve()
-    _ln(f"  {t('rel_setor_l')}: {func['setor']}  |  {t('rel_sub_l')}: {func['subsetor']}")
-    if func.get('vinculo'):
-        _ln(f"  {t('rel_vinculo')}: {func['vinculo']}")
     if func.get('data_admissao'):
         _ln(f"  {t('data_admissao')} {func['data_admissao']}")
     if sit_txt:
@@ -1731,7 +1745,7 @@ def _evolucao_empresa(funcionarios, n_meses=12):
     resultado = []
     while cur <= fim:
         ano, mes = (cur.year, cur.month)
-        por_func = {func['nome']: d for func in funcionarios if (d := sum((_dias_no_mes(f, ano, mes) for f in func.get('ferias', [])))) > 0}
+        por_func = {_identificacao_funcionario(func): d for func in funcionarios if (d := sum((_dias_no_mes(f, ano, mes) for f in func.get('ferias', [])))) > 0}
         total = sum(por_func.values())
         pico = _pico_mes(funcionarios, ano, mes) if por_func else 0
         resultado.append({'ano': ano, 'mes': mes, 'total_dias': total, 'n_func': len(por_func), 'pico': pico, 'por_func': por_func})
@@ -1752,13 +1766,58 @@ def _evolucao_func(func, n_meses=12):
         cur = add_meses(cur, 1)
     return resultado
 
-def _barra_grafico(valor, max_val, largura=None):
+def _barra_grafico(valor, max_val, largura=None, cor='cyan'):
+    """Barra horizontal colorida, responsiva e segura para terminais sem ANSI."""
     if largura is None:
-        largura = max(10, (_larg() - 4) * 38 // 100)
-    if max_val <= 0:
-        return '░' * largura
-    fill = round(min(valor, max_val) / max_val * largura)
-    return '█' * fill + '░' * (largura - fill)
+        largura = max(8, min(24, _larg() - 54))
+    largura = max(1, int(largura))
+    try:
+        proporcao = 0 if max_val <= 0 else max(0.0, min(float(valor) / float(max_val), 1.0))
+    except (TypeError, ValueError, ZeroDivisionError):
+        proporcao = 0
+    preenchido = round(proporcao * largura)
+    return (_c('▰' * preenchido, cor, True)
+            + _c('▱' * (largura - preenchido), 'muted'))
+
+
+def _grafico_indicadores(itens):
+    """Exibe indicadores em faixas compactas, quebrando conforme a largura."""
+    linha = '  '
+    separador = '   │   '
+    for rotulo, valor, cor in itens:
+        parte = f"{_c_muted(str(rotulo).upper())}  {_c(str(valor), cor, True)}"
+        if _vis(linha) > 2 and _vis(linha + separador + parte) > _larg() - 8:
+            _ln(linha)
+            linha = '  ' + parte
+        else:
+            linha += (separador if _vis(linha) > 2 else '') + parte
+    if _vis(linha) > 2:
+        _ln(linha)
+
+
+def _linha_grafico_mensal(rotulo, valor, maximo, largura=None, cor='cyan', detalhe='', atual=False):
+    """Renderiza uma linha de gráfico com rótulo, barra, valor e contexto."""
+    if largura is None:
+        largura = max(8, min(24, _larg() - 54))
+    barra = _barra_grafico(valor, maximo, largura, cor)
+    flag = '  ' + _c_warning('◀ mês atual') if atual else ''
+    info = ('  ' + _c_muted(detalhe)) if detalhe else ''
+    _ln(f"  {_c_menu(_pl(str(rotulo), 7))}  {barra}  {_c_accent(f'{valor:>4} d')}{info}{flag}")
+
+
+def _barra_saldo_bh(saldo, max_abs, largura_lado=10):
+    """Gráfico divergente: negativos à esquerda e positivos à direita."""
+    try:
+        proporcao = 0 if max_abs <= 0 else max(0.0, min(abs(float(saldo)) / float(max_abs), 1.0))
+    except (TypeError, ValueError, ZeroDivisionError):
+        proporcao = 0
+    preenchido = round(proporcao * largura_lado)
+    vazio = largura_lado - preenchido
+    esquerda = (_c('▱' * vazio, 'muted')
+                + _c('▰' * preenchido, 'error', True)) if saldo < 0 else _c('▱' * largura_lado, 'muted')
+    direita = (_c('▰' * preenchido, 'success', True)
+               + _c('▱' * vazio, 'muted')) if saldo > 0 else _c('▱' * largura_lado, 'muted')
+    return esquerda + _c('│', 'accent', True) + direita
 
 def _pedir_n_meses():
     limpar()
@@ -1778,13 +1837,16 @@ def _pedir_n_meses():
     return {'1': 3, '2': 6, '3': 12, '4': 24, '': 12, '0': None}.get(op, 12)
 
 def grafico_evolucao_mensal(d):
-    """Exibe a evolução mensal das férias em gráfico textual."""
-    """Gráfico de barras horizontais de evolução mensal de férias."""
+    """Exibe gráficos de férias com hierarquia visual e escala consistente."""
     limpar()
     titulo_box(t('graf_titulo'))
-    _lvz()
-    _ln(f"  {t('graf_escolha_tipo')}")
+    _grafico_indicadores([
+        ('Visão', 'EVOLUÇÃO', 'cyan'),
+        ('Comparação', 'MENSAL', 'purple'),
+        ('Atualização', 'MÊS CORRENTE', 'warning'),
+    ])
     _dleve()
+    _ln(f"  {t('graf_escolha_tipo')}")
     _ln(f"  1. {t('graf_empresa')}")
     _ln(f"  2. {t('graf_setor')}")
     _ln(f"  3. {t('graf_subsetor')}")
@@ -1799,155 +1861,220 @@ def grafico_evolucao_mensal(d):
     n_meses = _pedir_n_meses()
     if n_meses is None:
         return
+    if op not in ('1', '2', '3', '4'):
+        flash(t('invalido'), erro=True)
+        return
+
     hoje = datetime.today()
+    atual = (hoje.year, hoje.month)
+    bw = max(8, min(24, _larg() - 54))
+
     if op == '1':
         ev = _evolucao_empresa(d['funcionarios'], n_meses)
-        tot = sum((m['total_dias'] for m in ev))
-        n_c = sum((1 for m in ev if m['total_dias'] > 0))
-        max_d = max((m['total_dias'] for m in ev), default=1) or 1
-        bw = max(12, (_larg() - 4) * 38 // 100)
+        total = sum(m['total_dias'] for m in ev)
+        meses_ativos = sum(1 for m in ev if m['total_dias'] > 0)
+        max_dias = max((m['total_dias'] for m in ev), default=0) or 1
+        media = total / n_meses if n_meses else 0
+
+        def resumo_empresa():
+            _grafico_indicadores([
+                ('Período', f'{n_meses} meses', 'cyan'),
+                ('Dias agendados', f'{total} dias', 'success'),
+                ('Meses ativos', f'{meses_ativos}/{n_meses}', 'purple'),
+                ('Média mensal', f'{media:.1f} dias', 'accent'),
+            ])
+            _ln(_c_muted('  Barra proporcional ao maior total mensal do período.'))
+
+        def render_empresa(m):
+            _linha_grafico_mensal(
+                _mes_label(m['ano'], m['mes']), m['total_dias'], max_dias, bw,
+                'cyan', f"{m['n_func']} func.  •  pico {m['pico']}",
+                (m['ano'], m['mes']) == atual)
+
         limpar()
         titulo_box(f"{t('graf_titulo')} — {t('graf_empresa')}")
-
-        def resumo_emp():
-            _lnd(t('rel_data'), hoje.strftime('%d/%m/%Y %H:%M'))
-            _lnd(t('graf_periodo'), f'{n_meses} meses')
-            _lnd(t('rel_total_func'), str(len(d['funcionarios'])))
-            _lnd(t('graf_total_periodo'), f"{tot} {t('pa_dias')}")
-            _lnd(t('graf_meses_ativos'), f'{n_c} mês(es)')
-            _lnd('Legenda', '█=Dias de férias  ◄=Mês atual')
-        for item in _capturar(resumo_emp):
+        resumo_buf = _capturar(resumo_empresa)
+        for item in resumo_buf:
             _print_buf(item)
         _dleve()
-        _ln(f"  {'Mês':7}  {'Dias de férias'.ljust(bw)}  {'Dias':5}  {'Func':5}  {'Pico':5}")
-        _dleve()
         for m in ev:
-            label = _mes_label(m['ano'], m['mes'])
-            barra = _barra_grafico(m['total_dias'], max_d, bw)
-            flag = '◄' if m['ano'] == hoje.year and m['mes'] == hoje.month else ' '
-            _ln(f"  {label}{flag} [{barra}]  {m['total_dias']:4}d  {m['n_func']:4}   {m['pico']:4}")
+            render_empresa(m)
         _dleve()
-        _ln(f"  {t('graf_total_periodo')}: {tot} {t('pa_dias')}  |  {t('graf_meses_ativos')}: {n_c}")
-        _ln(f"  {t('graf_detalhe')}")
+        _ln(_c_muted('  Legenda: barra = dias de férias  •  pico = pessoas simultaneamente em férias'))
+        _ln(_c_warning('  ◀ mês atual'))
+        _ln(_c_accent(f"  Total no período: {total} dias"))
         _dleve()
         fundo()
         p()
-        op2 = inp(t('pag_cmd')).strip().lower()
-        if op2 == 'p':
+        opcao_detalhe = inp('P = detalhar por funcionário  |  ENTER = voltar: ').strip().lower()
+        if opcao_detalhe == 'p':
             meses_com = [m for m in ev if m['total_dias'] > 0]
             if not meses_com:
                 flash(t('graf_sem_dados'), erro=True)
                 return
 
+            def resumo_detalhe():
+                resumo_empresa()
+                _ln(_c_muted('  Detalhamento dos funcionários por mês.'))
+
             def render_mes(m):
-                barra = _barra_grafico(m['total_dias'], max_d, bw)
-                flag = '◄' if m['ano'] == hoje.year and m['mes'] == hoje.month else ' '
                 _lvz()
-                _ln(f"  {_mes_label(m['ano'], m['mes'])}{flag}  [{barra}]  {m['total_dias']}d  {m['n_func']}func  pico:{m['pico']}")
+                _ln(_c_title(f"{_mes_label(m['ano'], m['mes'])}  •  {m['total_dias']} dias"))
+                _linha_grafico_mensal(
+                    'Total', m['total_dias'], max_dias, bw, 'cyan',
+                    f"{m['n_func']} funcionários  •  pico {m['pico']}",
+                    (m['ano'], m['mes']) == atual)
                 if m['por_func']:
-                    max_f = max(m['por_func'].values(), default=1)
-                    bw2 = max(8, (_larg() - 4) * 22 // 100)
-                    for nome, dias in sorted(m['por_func'].items(), key=lambda x: -x[1]):
-                        b2 = _barra_grafico(dias, max_f, bw2)
-                        _ln(f'    [{b2}] {nome}: {dias}d')
-            paginar(d, f"{t('graf_titulo')} — detalhado", meses_com, render_mes, resumo_emp)
-    elif op == '2':
+                    max_f = max(m['por_func'].values(), default=1) or 1
+                    _ln(_c_muted('    Participação por funcionário:'))
+                    for nome, dias in sorted(m['por_func'].items(), key=lambda x: (-x[1], x[0].casefold())):
+                        _ln(f"    {_c_menu(nome)}")
+                        _ln(f"      {_barra_grafico(dias, max_f, max(8, min(18, _larg() - 58)), 'purple')}  {_c_accent(f'{dias} dias')}")
+
+            paginar(d, f"{t('graf_titulo')} — detalhado", meses_com, render_mes, resumo_detalhe)
+        return
+
+    if op == '2':
         setores = ord_setores(d)
         if not setores:
             flash(t('nenhum_setor'), erro=True)
             return
-        ev_map = {s: _evolucao_empresa([f for f in d['funcionarios'] if f['setor'] == s], n_meses) for s in setores}
-        bw = max(10, (_larg() - 4) * 32 // 100)
-        max_glob = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=1) or 1
+        ev_map = {
+            setor: _evolucao_empresa(
+                [f for f in d['funcionarios'] if f.get('setor', '') == setor], n_meses)
+            for setor in setores
+        }
+        max_global = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=0) or 1
+        total_geral = sum(m['total_dias'] for ev in ev_map.values() for m in ev)
+        ativos_geral = sum(1 for i in range(n_meses)
+                           if any(ev[i]['total_dias'] > 0 for ev in ev_map.values()))
 
-        def resumo_set():
-            _lnd(t('rel_data'), hoje.strftime('%d/%m/%Y %H:%M'))
-            _lnd(t('graf_periodo'), f'{n_meses} meses')
-            _lnd(t('rel_set_cad'), str(len(setores)))
-            _lnd('Legenda', '█=Dias  ◄=Mês atual  (escala global)')
+        def resumo_setores():
+            _grafico_indicadores([
+                ('Setores', len(setores), 'cyan'),
+                ('Período', f'{n_meses} meses', 'purple'),
+                ('Dias agendados', f'{total_geral} dias', 'success'),
+                ('Meses ativos', f'{ativos_geral}/{n_meses}', 'accent'),
+            ])
+            _ln(_c_muted('  Escala única entre setores: permite comparar as barras diretamente.'))
 
-        def render_set(setor):
+        def render_setor(setor):
             ev = ev_map[setor]
+            total = sum(m['total_dias'] for m in ev)
+            ativos = sum(1 for m in ev if m['total_dias'] > 0)
             _lvz()
-            _ln(f'  ══ {setor} ══')
+            _ln(_c_title(f'◆ {setor}'))
+            _grafico_indicadores([
+                ('Total', f'{total} dias', 'success'),
+                ('Meses ativos', f'{ativos}/{n_meses}', 'purple'),
+            ])
             _dleve()
+            if not total:
+                _ln(_c_muted('  Sem férias registradas no período.'))
+                return
             for m in ev:
-                if m['total_dias'] == 0 and m['n_func'] == 0:
+                if m['total_dias'] <= 0:
                     continue
-                label = _mes_label(m['ano'], m['mes'])
-                barra = _barra_grafico(m['total_dias'], max_glob, bw)
-                flag = '◄' if m['ano'] == hoje.year and m['mes'] == hoje.month else ' '
-                _ln(f"  {label}{flag} [{barra}]  {m['total_dias']:3}d  {m['n_func']}func")
-        paginar(d, f"{t('graf_titulo')} — {t('graf_setor')}", setores, render_set, resumo_set)
-    elif op == '3':
+                _linha_grafico_mensal(
+                    _mes_label(m['ano'], m['mes']), m['total_dias'], max_global, bw,
+                    'cyan', f"{m['n_func']} func.  •  pico {m['pico']}",
+                    (m['ano'], m['mes']) == atual)
+
+        paginar(d, f"{t('graf_titulo')} — {t('graf_setor')}", setores, render_setor, resumo_setores)
+        return
+
+    if op == '3':
         setor = sel_setor(d)
         if not setor:
             return
-        subs = ord_subs(d, setor)
-        if not subs:
+        subsetores = ord_subs(d, setor)
+        if not subsetores:
             flash(t('nenhum_sub'), erro=True)
             return
-        ev_map = {s: _evolucao_empresa([f for f in d['funcionarios'] if f['setor'] == setor and f['subsetor'] == s], n_meses) for s in subs}
-        bw = max(10, (_larg() - 4) * 32 // 100)
-        max_glob = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=1) or 1
+        ev_map = {
+            subsetor: _evolucao_empresa(
+                [f for f in d['funcionarios']
+                 if f.get('setor', '') == setor and f.get('subsetor', '') == subsetor], n_meses)
+            for subsetor in subsetores
+        }        max_global = max((m['total_dias'] for ev in ev_map.values() for m in ev), default=0) or 1
+        total_geral = sum(m['total_dias'] for ev in ev_map.values() for m in ev)
+        ativos_geral = sum(1 for i in range(n_meses)
+                           if any(ev[i]['total_dias'] > 0 for ev in ev_map.values()))
 
-        def resumo_sub():
-            _lnd(t('rel_data'), hoje.strftime('%d/%m/%Y %H:%M'))
-            _lnd(t('rel_setor_l'), setor)
-            _lnd(t('graf_periodo'), f'{n_meses} meses')
+        def resumo_subsetores():
+            _grafico_indicadores([
+                ('Setor', setor, 'cyan'),
+                ('Subsetores', len(subsetores), 'purple'),
+                ('Período', f'{n_meses} meses', 'accent'),
+                ('Dias agendados', f'{total_geral} dias', 'success'),
+                ('Meses ativos', f'{ativos_geral}/{n_meses}', 'warning'),
+            ])
+            _ln(_c_muted('  Escala única entre subsetores deste setor.'))
 
-        def render_sub(sub):
-            ev = ev_map[sub]
+        def render_subsetor(subsetor):
+            ev = ev_map[subsetor]
+            total = sum(m['total_dias'] for m in ev)
+            ativos = sum(1 for m in ev if m['total_dias'] > 0)
             _lvz()
-            _ln(f'  ══ {sub} ══')
+            _ln(_c_title(f'◆ {subsetor}'))
+            _grafico_indicadores([
+                ('Total', f'{total} dias', 'success'),
+                ('Meses ativos', f'{ativos}/{n_meses}', 'purple'),
+            ])
             _dleve()
+            if not total:
+                _ln(_c_muted('  Sem férias registradas no período.'))
+                return
             for m in ev:
-                if m['total_dias'] == 0 and m['n_func'] == 0:
+                if m['total_dias'] <= 0:
                     continue
-                label = _mes_label(m['ano'], m['mes'])
-                barra = _barra_grafico(m['total_dias'], max_glob, bw)
-                flag = '◄' if m['ano'] == hoje.year and m['mes'] == hoje.month else ' '
-                _ln(f"  {label}{flag} [{barra}]  {m['total_dias']:3}d  {m['n_func']}func")
-        paginar(d, f"{t('graf_titulo')} — {setor}", subs, render_sub, resumo_sub)
-    elif op == '4':
-        func = sel_func(d)
-        if not func:
-            return
-        ev = _evolucao_func(func, n_meses)
-        an = analise_periodo_atual(d, func)
-        max_mes = max((m['dias'] for m in ev), default=1) or 1
-        max_acum = max((m['acumulado'] for m in ev), default=1) or 1
-        bw = max(10, (_larg() - 4) * 30 // 100)
+                _linha_grafico_mensal(
+                    _mes_label(m['ano'], m['mes']), m['total_dias'], max_global, bw,
+                    'purple', f"{m['n_func']} func.  •  pico {m['pico']}",
+                    (m['ano'], m['mes']) == atual)
 
-        def resumo_func():
-            _lnd(t('rel_data'), hoje.strftime('%d/%m/%Y %H:%M'))
-            _lnd(t('rel_nome'), func['nome'])
-            _lnd(t('rel_setor_l'), f"{func['setor']} → {func['subsetor']}")
-            _lnd(t('graf_periodo'), f'{n_meses} meses')
-            if func.get('data_admissao'):
-                _lnd(t('data_admissao'), func['data_admissao'])
-            if an['tipo'] == 'aquisitivo':
-                ini_s = an['ini'].strftime('%d/%m/%Y')
-                fim_s = (an['fim'] - timedelta(days=1)).strftime('%d/%m/%Y')
-                _lnd(t('pa_atual') + f" #{an['numero']}", f'{ini_s} → {fim_s}')
-                if an['max_dias'] and an['max_dias'] > 0:
-                    bp = _barra_progresso(an['tirados'], an['max_dias'])
-                    if bp:
-                        barra, pct = bp
-                        _lnd(t('pa_tirados'), f"{an['tirados']}/{an['max_dias']} {t('pa_dias')}  [{barra}] {pct}%  Restam: {an['restantes']}")
-            _lnd('Legenda', 'Mês=barras mensais  Acumulado=total  ◄=Mês atual')
+        paginar(d, f"{t('graf_titulo')} — {setor}", subsetores, render_subsetor, resumo_subsetores)
+        return
 
-        def render_func_mes(m):
-            label = _mes_label(m['ano'], m['mes'])
-            b_mes = _barra_grafico(m['dias'], max_mes, bw)
-            b_acum = _barra_grafico(m['acumulado'], max_acum, bw)
-            flag = '◄' if m['ano'] == hoje.year and m['mes'] == hoje.month else ' '
-            _lvz()
-            _ln(f"  {label}{flag}  Mês      : [{b_mes}]  {m['dias']:3} {t('pa_dias')}")
-            _ln(f"  {' ' * 6}{' '}  Acumulado: [{b_acum}]  {m['acumulado']:3} {t('pa_dias')}")
-        paginar(d, f"{t('graf_titulo')} — {func['nome']}", ev, render_func_mes, resumo_func)
-    else:
-        flash(t('invalido'), erro=True)
+    func = sel_func(d)
+    if not func:
+        return
+    ev = _evolucao_func(func, n_meses)
+    analise = analise_periodo_atual(d, func)
+    max_mes = max((m['dias'] for m in ev), default=0) or 1
+    max_acum = max((m['acumulado'] for m in ev), default=0) or 1
+    total = sum(m['dias'] for m in ev)
+    media = total / n_meses if n_meses else 0
+
+    def resumo_func():
+        _grafico_indicadores([
+            ('Funcionário', func.get('nome', 'Não informado'), 'cyan'),
+            ('Período', f'{n_meses} meses', 'purple'),
+            ('Dias no período', f'{total} dias', 'success'),
+            ('Média mensal', f'{media:.1f} dias', 'accent'),
+        ])
+        _ln(_c_muted('  Identificação: ' + _identificacao_funcionario(func)))
+        if func.get('data_admissao'):
+            _lnd(t('data_admissao'), func['data_admissao'])
+        if analise['tipo'] == 'aquisitivo':
+            inicio = analise['ini'].strftime('%d/%m/%Y')
+            termino = (analise['fim'] - timedelta(days=1)).strftime('%d/%m/%Y')
+            _lnd(t('pa_atual') + f" #{analise['numero']}", f'{inicio} → {termino}')
+            if analise['max_dias'] and analise['max_dias'] > 0:
+                progresso = _barra_progresso(analise['tirados'], analise['max_dias'])
+                if progresso:
+                    barra, pct = progresso
+                    _lnd(t('pa_tirados'), f"{analise['tirados']}/{analise['max_dias']} dias  [{barra}] {pct}%  Restam: {analise['restantes']}")
+
+    def render_func_mes(m):
+        label = _mes_label(m['ano'], m['mes'])
+        atual_mes = (m['ano'], m['mes']) == atual
+        _lvz()
+        _ln(_c_title(label + ('  •  MÊS ATUAL' if atual_mes else '')))
+        _linha_grafico_mensal('Mês', m['dias'], max_mes, 14, 'cyan')
+        _linha_grafico_mensal('Acum.', m['acumulado'], max_acum, 14, 'purple', atual=atual_mes)
+
+    paginar(d, f"{t('graf_titulo')} — {_identificacao_funcionario(func)}", ev, render_func_mes, resumo_func)
 
 def _calcular_painel(d):
     hoje = datetime.today()
@@ -1956,17 +2083,16 @@ def _calcular_painel(d):
     em_ferias = []
     em_30dias = []
     for func in ord_funcs(d):
-        v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
         for f in func['ferias']:
             ini = conv_data(f['inicio'])
             fim = conv_data(f['fim'])
             if not ini or not fim:
                 continue
             if ini <= hoje <= fim:
-                em_ferias.append({'nome': func['nome'] + v, 'setor': func['setor'], 'subsetor': func['subsetor'], 'inicio': f['inicio'], 'fim': f['fim'], 'dias_rest': (fim - hoje_d).days + 1, 'venda': f.get('venda_ferias', False)})
+                em_ferias.append({'nome': _identificacao_funcionario(func), 'inicio': f['inicio'], 'fim': f['fim'], 'dias_rest': (fim - hoje_d).days + 1, 'venda': f.get('venda_ferias', False)})
                 break
             if hoje_d < ini <= lim30:
-                em_30dias.append({'nome': func['nome'] + v, 'setor': func['setor'], 'subsetor': func['subsetor'], 'inicio': f['inicio'], 'fim': f['fim'], 'dias_ini': (ini - hoje_d).days, 'venda': f.get('venda_ferias', False)})
+                em_30dias.append({'nome': _identificacao_funcionario(func), 'inicio': f['inicio'], 'fim': f['fim'], 'dias_ini': (ini - hoje_d).days, 'venda': f.get('venda_ferias', False)})
                 break
     em_ferias.sort(key=lambda x: x['dias_rest'])
     em_30dias.sort(key=lambda x: x['dias_ini'])
@@ -2035,14 +2161,12 @@ def painel_ferias(d):
             vd = f"  {t('fer_venda_lbl')}" if item['venda'] else ''
             _lvz()
             _ln(f"  › {item['nome']}")
-            _ln(f"    {item['setor']}  →  {item['subsetor']}")
             _ln(f"    {item['inicio']}  até  {item['fim']}{vd}")
             _ln(f"    {t('painel_termina')}: {item['dias_rest']} {t('painel_dias_rest')}")
         elif tipo == 'em30':
             vd = f"  {t('fer_venda_lbl')}" if item['venda'] else ''
             _lvz()
             _ln(f"  › {item['nome']}")
-            _ln(f"    {item['setor']}  →  {item['subsetor']}")
             _ln(f"    {item['inicio']}  até  {item['fim']}{vd}")
             _ln(f"    {t('painel_inicia')}: {item['dias_ini']} {t('painel_dias_ini')}")
     paginar(d, t('painel_titulo'), itens, render_item, resumo)
@@ -2346,8 +2470,7 @@ def listar_funcionarios_por_setor(d):
                 _ln('      ' + t('sem_func'))
             else:
                 for func in fs_sub:
-                    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
-                    _ln(f"      › {func['nome']}{v}")
+                    _ln(f"      › {_identificacao_funcionario(func)}")
                     _ln(_linha_periodo_atual(func, d))
                     pas, atu, fut = classificar_ferias(func)
                     if atu:
@@ -2387,7 +2510,7 @@ def cadastrar_funcionario(d):
         return
     d['funcionarios'].append({'nome': nome, 'setor': setor, 'subsetor': sub, 'vinculo': vinculo or '', 'data_admissao': adm, 'ferias': []})
     salvar_dados(d)
-    flash(f"'{nome}' — " + t('fun_criado'))
+    flash(f"'{_identificacao_funcionario({'nome': nome, 'setor': setor, 'subsetor': sub, 'vinculo': vinculo or ''})}' — " + t('fun_criado'))
 
 def excluir_funcionario(d):
     limpar()
@@ -2398,12 +2521,12 @@ def excluir_funcionario(d):
     if not func:
         return
     p()
-    p(f"  {func['nome']} ({func['setor']} → {func['subsetor']})")
+    p(f"  {_identificacao_funcionario(func)}")
     c = inp(t('confirmar_excl')).strip().lower()
     if c == t('sim'):
         d['funcionarios'].remove(func)
         salvar_dados(d)
-        flash(f"'{func['nome']}' — " + t('fun_excluido'))
+        flash(f"'{_identificacao_funcionario(func)}' — " + t('fun_excluido'))
     else:
         flash(t('excluir_cancel'))
 
@@ -2452,7 +2575,7 @@ def _bh_limite_alerta_minutos(d):
 
 
 def _bh_identificacao_func(func):
-    return f"{func['nome']} — {func['setor']} / {func['subsetor']}"
+    return _identificacao_funcionario(func)
 
 
 def _bh_alertas_criticos(d):
@@ -2628,9 +2751,10 @@ def _bh_relatorio_resumo(registros):
         ['Créditos acumulados', _bh_fmt_minutos(sum(r['creditos'] for r in registros))],
         ['Débitos acumulados', _bh_fmt_minutos(-sum(r['debitos'] for r in registros))],
     ]
-    if maior_abs is not None:
-        linhas.insert(4, ['Maior saldo absoluto', f"{_bh_identificacao_func(maior_abs['func'])} — {_bh_fmt_minutos(maior_abs['saldo'])}"])
     _tabela_renderizar(['Indicador', 'Valor'], linhas)
+    if maior_abs is not None:
+        _ln('  Maior saldo absoluto: ' + _c_menu(_bh_identificacao_func(maior_abs['func']))
+            + ' — ' + _c_accent(_bh_fmt_minutos(maior_abs['saldo'])))
 
 
 def _bh_relatorio_tabela(d, registros):
@@ -2722,9 +2846,9 @@ def _bh_relatorio_tabela(d, registros):
 
     def linhas_saldo_bh(registro):
         func = registro['func']
-        return [[func.get('nome', ''), func.get('setor', ''), func.get('subsetor', ''), _bh_fmt_minutos(registro['saldo'])]]
+        return [[_identificacao_funcionario(func), _bh_fmt_minutos(registro['saldo'])]]
     paginar_tabela(d, f'TABELA DE SALDOS — {descricao}', filtrados,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Saldo'], linhas_saldo_bh,
+                   ['Nome | Setor | Subsetor | Vínculo', 'Saldo'], linhas_saldo_bh,
                    lambda: (_ln(f'Filtro: {descricao}'), _ln(f'Funcionários: {len(filtrados)}')))
 
 def _bh_resumo_menu_relatorios(registros):
@@ -2788,10 +2912,9 @@ def bh_relatorio(d):
         def linha_ranking(r):
             posicao = posicoes[id(r)]
             func = r['func']
-            unidade = ' / '.join(x for x in (func.get('setor', ''), func.get('subsetor', '')) if x)
-            return [[f'{posicao:02d}. {func.get("nome", "")}', unidade, _bh_fmt_minutos(r['saldo'])]]
+            return [[f'{posicao:02d}. {_identificacao_funcionario(func)}', _bh_fmt_minutos(r['saldo'])]]
         paginar_tabela(d, titulo, selecionados,
-            ['Funcionário', 'Setor / Subsetor', 'Saldo'], linha_ranking,
+            ['Posição | Nome | Setor | Subsetor | Vínculo', 'Saldo'], linha_ranking,
             cor_item_fn=lambda r: r['saldo'] < 0 or abs(r['saldo']) >= limite_critico,
             separador_item=False)
         return
@@ -2799,14 +2922,20 @@ def bh_relatorio(d):
         limpar(); titulo_box('GRÁFICO COMPLETO DE SALDOS — MAIOR PARA MENOR')
         top = sorted(registros_listagem, key=lambda r: (r['saldo'], str(r['func'].get('nome', '')).casefold()), reverse=True)
         max_abs = max((abs(r['saldo']) for r in top), default=0)
-        linhas = []
-        for i, r in enumerate(top, 1):
-            saldo = r['saldo']; largura = int(abs(saldo) * 24 / max_abs) if max_abs else 0
-            barra = ('+' if saldo > 0 else '−' if saldo < 0 else '·') * largura
-            linhas.append([str(i), r['func'].get('nome', ''), r['func'].get('setor', ''), r['func'].get('subsetor', ''), barra, _bh_fmt_minutos(saldo)])
-        if not max_abs: _ln('Todos os saldos estão zerados.')
-        _tabela_renderizar(['Posição', 'Funcionário', 'Setor', 'Subsetor', 'Gráfico relativo', 'Saldo'], linhas, [r['saldo'] < 0 or abs(r['saldo']) >= _bh_limite_alerta_minutos(d) for r in top])
-        _ln('Escala relativa ao maior saldo absoluto exibido.'); _dleve(); fundo(); pausar(); return
+        if not top:
+            _ln('Nenhum funcionário para exibir. Os saldos estão zerados ou ocultos pela configuração.')
+            _dleve(); fundo(); pausar(); return
+        posicoes_grafico = {id(registro): i for i, registro in enumerate(top, 1)}
+        def linha_grafico(r):
+            posicao = posicoes_grafico[id(r)]
+            barra = _barra_saldo_bh(r['saldo'], max_abs, 10)
+            return [[_identificacao_funcionario(r['func']), f'{posicao:02d}', barra, _bh_fmt_minutos(r['saldo'])]]
+        paginar_tabela(d, 'GRÁFICO DE SALDOS — VISÃO DIVERGENTE', top,
+            ['Nome | Setor | Subsetor | Vínculo', 'Posição', 'Saldo relativo', 'Saldo'], linha_grafico,
+            cor_item_fn=lambda r: r['saldo'] < 0 or abs(r['saldo']) >= _bh_limite_alerta_minutos(d))
+        _ln('Legenda: negativo à esquerda  │  positivo à direita  •  escala pelo maior saldo absoluto.')
+        _ln('  ' + _c_error('▰ Negativo') + '   ' + _c_success('▰ Positivo') + '   ' + _c_muted('▱ Sem preenchimento'))
+        _dleve(); fundo(); pausar(); return
     elif op == '5':
         limpar(); titulo_box('ALERTAS DE SALDO')
         limite_critico = _bh_limite_alerta_minutos(d)
@@ -2814,12 +2943,13 @@ def bh_relatorio(d):
         if not alertas:
             _ln('Nenhum alerta: todos os saldos estão abaixo de 20:00.')
         else:
-            linhas = []
-            for r in alertas:
+            def linha_alerta(r):
                 nivel = 'CRÍTICO' if abs(r['saldo']) >= limite_critico else 'ATENÇÃO'
                 direcao = 'positivo' if r['saldo'] > 0 else 'negativo' if r['saldo'] < 0 else 'zerado'
-                linhas.append([nivel, r['func'].get('nome', ''), r['func'].get('setor', ''), r['func'].get('subsetor', ''), _bh_fmt_minutos(r['saldo']), direcao])
-            _tabela_renderizar(['Nível', 'Funcionário', 'Setor', 'Subsetor', 'Saldo', 'Direção'], linhas, [r['saldo'] < 0 or abs(r['saldo']) >= limite_critico for r in alertas])
+                return [[_identificacao_funcionario(r['func']), nivel, _bh_fmt_minutos(r['saldo']), direcao]]
+            paginar_tabela(d, 'ALERTAS DE SALDO', alertas,
+                ['Nome | Setor | Subsetor | Vínculo', 'Nível', 'Saldo', 'Direção'], linha_alerta,
+                cor_item_fn=lambda r: r['saldo'] < 0 or abs(r['saldo']) >= limite_critico)
         _ln(f'Atenção a partir de 20:00; limite crítico configurado: {_bh_fmt_minutos(limite_critico, sinal=False)}')
     elif op == '6':
         _bh_relatorio_tabela(d, registros_listagem)
@@ -2865,8 +2995,7 @@ def bh_ajustar_saldo(d):
         if saldo_final is None:
             flash('Saldo final inválido. Use HH:MM com sinal opcional; 00:00 é permitido.', erro=True); return
         delta = saldo_final - saldo_atual
-        origem = 'Conciliação com relatório mensal'
-    if delta == 0:
+        origem = 'Conciliação com relatório mensal'    if delta == 0:
         flash('O saldo informado já corresponde ao saldo calculado. Nenhum ajuste foi lançado.')
         return
     motivo = inp(t('bh_motivo')).strip()
@@ -2929,9 +3058,8 @@ def agendar_ferias(d):
     func = sel_func(d)
     if not func:
         return
-    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
     p()
-    p(f"  {func['nome']}{v}  ({func['setor']} → {func['subsetor']})")
+    p(f"  {_identificacao_funcionario(func)}")
     p()
     ini_s = inp(t('fer_inicio')).strip()
     fim_s = inp(t('fer_fim')).strip()
@@ -2966,7 +3094,7 @@ def agendar_ferias(d):
         label = f"Prd.{an['numero']}: {an['tirados']} {t('pa_dias')} tirados"
     else:
         label = f"Ano {an['ano_civil']}: {an['tirados']} {t('pa_dias')} tirados"
-    flash(f"{func['nome']}: {ini_s} → {fim_s}  |  {label} — " + t('fer_ok'))
+    flash(f"{_identificacao_funcionario(func)}: {ini_s} → {fim_s}  |  {label} — " + t('fer_ok'))
 
 def cancelar_ferias(d):
     limpar()
@@ -2977,7 +3105,7 @@ def cancelar_ferias(d):
     if not func:
         return
     if not func['ferias']:
-        flash(f"{func['nome']} {t('fer_sem')}", erro=True)
+        flash(f"{_identificacao_funcionario(func)} {t('fer_sem')}", erro=True)
         return
     pas, atu, fut = classificar_ferias(func)
     ferias_ord = ord_ferias(d, list(func['ferias']))
@@ -2991,7 +3119,7 @@ def cancelar_ferias(d):
         _ln(f"  {f['inicio']}  até  {f['fim']}  ({dias} {t('pa_dias')}){vd}  {cat}")
 
     def resumo():
-        _lnd(t('fun_lista')[:-1], func['nome'])
+        _lnd(t('fun_lista')[:-1], _identificacao_funcionario(func))
         _lnd(t('rel_andamento'), str(len(atu)) + ' período(s)' if atu else '—')
         _lnd(t('periodos_futuros'), str(len(fut)) + ' período(s)' if fut else '—')
         _lnd(t('periodos_passados'), str(len(pas)) + ' período(s)' if pas else '—')
@@ -3039,19 +3167,18 @@ def ver_calendario(d):
             else:
                 for func in sb['funcs']:
                     pas, atu, fut = classificar_ferias(func)
-                    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
                     if atu:
                         f0 = atu[0]
                         vd = ' ' + t('fer_venda_lbl') if f0.get('venda_ferias') else ''
-                        _ln(f"       [ANDAMENTO] {func['nome']}{v}: {f0['inicio']} até {f0['fim']}{vd}")
+                        _ln(f"       [ANDAMENTO] {_identificacao_funcionario(func)}: {f0['inicio']} até {f0['fim']}{vd}")
                     elif fut:
                         f0 = fut[0]
                         vd = ' ' + t('fer_venda_lbl') if f0.get('venda_ferias') else ''
-                        _ln(f"       [FUTURO] {func['nome']}{v}: {f0['inicio']} até {f0['fim']}{vd}")
+                        _ln(f"       [FUTURO] {_identificacao_funcionario(func)}: {f0['inicio']} até {f0['fim']}{vd}")
                     elif pas:
-                        _ln(f"       [CONCLUÍDO] {func['nome']}{v}: último {pas[-1]['inicio']} até {pas[-1]['fim']}")
+                        _ln(f"       [CONCLUÍDO] {_identificacao_funcionario(func)}: último {pas[-1]['inicio']} até {pas[-1]['fim']}")
                     else:
-                        _ln(f"       {func['nome']}{v}: {t('sem_ferias')}")
+                        _ln(f"       {_identificacao_funcionario(func)}: {t('sem_ferias')}")
     paginar(d, t('fer_cal_titulo'), blocos, render_cal)
 
 # ---------------------------------------------------------------------------
@@ -3202,20 +3329,16 @@ def rel_ferias_coincidentes(d):
 
     def render_conflito(item):
         func_a, func_b = item['a'], item['b']
-        nome_a = func_a.get('nome', '—')
-        nome_b = func_b.get('nome', '—')
-        unidade_a = f"{func_a.get('setor', '—')} / {func_a.get('subsetor', '—')}"
-        unidade_b = f"{func_b.get('setor', '—')} / {func_b.get('subsetor', '—')}"
+        identidade_a = _identificacao_funcionario(func_a)
+        identidade_b = _identificacao_funcionario(func_b)
         periodo_a = f"{item['fer_a'].get('inicio', '—')} a {item['fer_a'].get('fim', '—')}"
         periodo_b = f"{item['fer_b'].get('inicio', '—')} a {item['fer_b'].get('fim', '—')}"
         comum = f"{item['inicio'].strftime('%d/%m/%Y')} a {item['fim'].strftime('%d/%m/%Y')}"
 
-        _ln('  ' + _c_warning('●') + ' ' + _c_menu(nome_a)
-            + '  ' + _c_muted('↔') + '  ' + _c_menu(nome_b))
-        _ln('    ' + _c_accent('1') + ' ' + _c_muted(unidade_a)
-            + '  ' + _c_muted('Férias: ') + periodo_a)
-        _ln('    ' + _c_accent('2') + ' ' + _c_muted(unidade_b)
-            + '  ' + _c_muted('Férias: ') + periodo_b)
+        _ln('  ' + _c_warning('●') + ' ' + _c_menu(identidade_a))
+        _ln('    ' + _c_muted('Férias: ') + periodo_a)
+        _ln('  ' + _c_warning('●') + ' ' + _c_menu(identidade_b))
+        _ln('    ' + _c_muted('Férias: ') + periodo_b)
         _ln('    ' + _c_success('COINCIDÊNCIA') + ' ' + _c_success(comum)
             + '  ' + _c_warning(f"{item['dias']} dias"))
 
@@ -3232,9 +3355,8 @@ def rel_ferias_coincidentes(d):
         pausar()
         return
 
-    # Cada conflito é apresentado como um bloco visual: os dois funcionários
-    # aparecem lado a lado no cabeçalho, seguidos de unidade, férias e intervalo
-    # comum. Isso evita o texto corrido com nove campos que ficava difícil de ler.
+    # Cada conflito é apresentado em duas identificações completas, seguidas
+    # dos respectivos períodos de férias e do intervalo de coincidência.
     paginar(d, 'RELATÓRIO DE FÉRIAS COINCIDENTES', conflitos,
             render_conflito, resumo)
 
@@ -3280,7 +3402,7 @@ def rel_por_periodo_aquisitivo(d):
         if not func:
             return
         funcs_base = [func]
-        filtro_label = func['nome']
+        filtro_label = _identificacao_funcionario(func)
     else:
         flash(t('invalido'), erro=True)
         return
@@ -3315,9 +3437,9 @@ def rel_por_periodo_aquisitivo(d):
         if futuras:
             agenda_futura = '; '.join(f"{f['inicio']}–{f['fim']}" for f in futuras[:3])
             ferias_txt = f"{ferias_txt} | Futuras: {agenda_futura}"
-        return [[func['nome'], func['setor'], func['subsetor'], func.get('vinculo', '—') or '—', periodo, str(an['tirados']), limite, restante, ferias_txt]]
+        return [[_identificacao_funcionario(func), periodo, str(an['tirados']), limite, restante, ferias_txt]]
     paginar_tabela(d, f"{t('rel_pa_titulo')}  |  {filtro_label}", funcs_base,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Vínculo', 'Período', 'Dias usados', 'Limite', 'Restam', 'Férias no período'], linhas_pa, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Período', 'Dias usados', 'Limite', 'Restam', 'Férias no período'], linhas_pa, resumo)
 
 def rel_saldo_dias(d):
     limpar()
@@ -3399,9 +3521,9 @@ def rel_saldo_dias(d):
         limite = str(max_d) if max_d and max_d > 0 else 'Ilimitado'
         saldo = (f"-{tirados - max_d}" if reg['excedido'] else str(restantes)) if max_d and max_d > 0 else '—'
         status = t('rel_saldo_neg') if reg['excedido'] else t('rel_saldo_ok') if restantes is not None else 'Sem limite'
-        return [[func['nome'], func['setor'], func['subsetor'], periodo, str(tirados), limite, saldo, status]]
+        return [[_identificacao_funcionario(func), periodo, str(tirados), limite, saldo, status]]
     paginar_tabela(d, f"{t('rel_saldo_titulo')}  |  {filtro_label}", registros,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Período', 'Dias usados', 'Limite', 'Saldo', 'Situação'], linhas_saldo, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Período', 'Dias usados', 'Limite', 'Saldo', 'Situação'], linhas_saldo, resumo)
 
 def rel_individual(d):
     if not d['funcionarios']:
@@ -3420,10 +3542,7 @@ def rel_individual(d):
 
     def resumo():
         _lnd(t('rel_data'), datetime.today().strftime('%d/%m/%Y %H:%M'))
-        _lnd(t('rel_nome'), func['nome'])
-        _lnd(t('rel_vinculo'), func.get('vinculo', '—') or '—')
-        _lnd(t('rel_setor_l'), func['setor'])
-        _lnd(t('rel_sub_l'), func['subsetor'])
+        _lnd('Funcionário', _identificacao_funcionario(func))
         if func.get('data_admissao'):
             _lnd(t('data_admissao'), func['data_admissao'])
         _lnd(t('rel_periodos'), str(len(func['ferias'])))
@@ -3449,7 +3568,7 @@ def rel_individual(d):
         itens.append({'tipo': 'fer', 'f': f, 'idx': i})
     if not itens:
         limpar()
-        titulo_box(f"{t('rel_individual_t')}: {func['nome']}")
+        titulo_box(f"{t('rel_individual_t')}: {_identificacao_funcionario(func)}")
         for item in _capturar(resumo):
             _print_buf(item)
         _dleve()
@@ -3470,7 +3589,7 @@ def rel_individual(d):
         status = t('rel_andamento') if ini and ini <= hoje <= fim else t('rel_futuro') if ini and ini > hoje else t('rel_concluido')
         detalhe = t('fer_venda_lbl') if f.get('venda_ferias') else ''
         return [['Férias', f['inicio'], f['fim'], '—', status, str(dias), detalhe]]
-    paginar_tabela(d, f"{t('rel_individual_t')}: {func['nome']}", itens,
+    paginar_tabela(d, f"{t('rel_individual_t')}: {_identificacao_funcionario(func)}", itens,
                    ['Tipo', 'Início', 'Término', 'Prazo concessivo', 'Situação', 'Dias', 'Observação'], linhas_individual, resumo)
 
 def _tela_selecao_funcionarios(d):
@@ -3616,9 +3735,9 @@ def rel_multiplos_funcionarios(d):
             periodo, limite, saldo = f"Ano civil {an['ano_civil']}", 'Ilimitado', '—'
         pas, atu, fut = classificar_ferias(func)
         agenda = '; '.join(f"{f['inicio']}–{f['fim']}" for f in (atu + fut)[:3]) or '—'
-        return [[func['nome'], func['setor'], func['subsetor'], situacao_geral_func(func), periodo, f"{an['tirados']}/{limite}", saldo, agenda]]
+        return [[_identificacao_funcionario(func), situacao_geral_func(func), periodo, f"{an['tirados']}/{limite}", saldo, agenda]]
     paginar_tabela(d, f"{t('rel_multi_titulo')}  ({n} {t('rel_selecionados')})", selecionados,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Situação', 'Período', 'Dias usados/limite', 'Restam', 'Férias atuais/próximas'], linhas_multi, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Situação', 'Período', 'Dias usados/limite', 'Restam', 'Férias atuais/próximas'], linhas_multi, resumo)
 
 def rel_geral(d):
     setores_ord = ord_setores(d)
@@ -3637,9 +3756,9 @@ def rel_geral(d):
         status = situacao_geral_func(func)
         ferias = sorted(func['ferias'], key=lambda f: conv_data(f['inicio']) or datetime.min)
         agenda = '; '.join(f"{f['inicio']}–{f['fim']}" for f in ferias[:2]) or '—'
-        return [[func['setor'], func['subsetor'], func['nome'], func.get('vinculo', '—') or '—', status, str(len(ferias)), str(_status_ferias(func)[0]), agenda]]
+        return [[_identificacao_funcionario(func), status, str(len(ferias)), str(_status_ferias(func)[0]), agenda]]
     paginar_tabela(d, t('rel_geral'), funcs,
-                   ['Setor', 'Subsetor', 'Funcionário', 'Vínculo', 'Situação', 'Períodos', 'Dias históricos', 'Férias agendadas'], linhas_geral, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Situação', 'Períodos', 'Dias históricos', 'Férias agendadas'], linhas_geral, resumo)
 
 def rel_setor(d):
     limpar(); titulo_box(t('rel_setor')); _lvz(); fundo()
@@ -3657,9 +3776,9 @@ def rel_setor(d):
         an = analise_periodo_atual(d, func)
         periodo = f"{an['ini'].strftime('%d/%m/%Y')} a {(an['fim'] - timedelta(days=1)).strftime('%d/%m/%Y')}" if an['tipo'] == 'aquisitivo' else f"Ano civil {an['ano_civil']}"
         agenda = '; '.join(f"{f['inicio']}–{f['fim']}" for f in sorted(func['ferias'], key=lambda x: conv_data(x['inicio']) or datetime.min)[:2]) or '—'
-        return [[func['subsetor'], func['nome'], func.get('vinculo', '—') or '—', situacao_geral_func(func), periodo, str(an['tirados']), str(an['restantes']) if an['restantes'] is not None else '—', agenda]]
+        return [[_identificacao_funcionario(func), situacao_geral_func(func), periodo, str(an['tirados']), str(an['restantes']) if an['restantes'] is not None else '—', agenda]]
     paginar_tabela(d, f"{t('rel_setor')}: {setor}", fs,
-                   ['Subsetor', 'Funcionário', 'Vínculo', 'Situação', 'Período', 'Dias usados', 'Restam', 'Férias agendadas'], linhas_setor, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Situação', 'Período', 'Dias usados', 'Restam', 'Férias agendadas'], linhas_setor, resumo)
 
 def rel_sub(d):
     limpar()
@@ -3687,9 +3806,9 @@ def rel_sub(d):
         an = analise_periodo_atual(d, func)
         periodo = f"{an['ini'].strftime('%d/%m/%Y')} a {(an['fim'] - timedelta(days=1)).strftime('%d/%m/%Y')}" if an['tipo'] == 'aquisitivo' else f"Ano civil {an['ano_civil']}"
         agenda = '; '.join(f"{f['inicio']}–{f['fim']}" for f in sorted(func['ferias'], key=lambda x: conv_data(x['inicio']) or datetime.min)[:2]) or '—'
-        return [[func['nome'], func.get('vinculo', '—') or '—', situacao_geral_func(func), periodo, str(an['tirados']), str(an['max_dias']) if an['max_dias'] else 'Ilimitado', str(an['restantes']) if an['restantes'] is not None else '—', agenda]]
+        return [[_identificacao_funcionario(func), situacao_geral_func(func), periodo, str(an['tirados']), str(an['max_dias']) if an['max_dias'] else 'Ilimitado', str(an['restantes']) if an['restantes'] is not None else '—', agenda]]
     paginar_tabela(d, f"{t('rel_sub')}: {sub}", fsub,
-                   ['Funcionário', 'Vínculo', 'Situação', 'Período', 'Dias usados', 'Limite', 'Restam', 'Férias agendadas'], linhas_sub, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Situação', 'Período', 'Dias usados', 'Limite', 'Restam', 'Férias agendadas'], linhas_sub, resumo)
 
 def rel_periodo(d):
     limpar()
@@ -3742,10 +3861,10 @@ def rel_periodo(d):
             dias = calc_dias(f['inicio'], f['fim'])
             ie = max(ini, conv_data(f['inicio'])); fe = min(fim, conv_data(f['fim']))
             deff = (fe - ie).days + 1
-            rows.append([func['nome'], func['setor'], func['subsetor'], f['inicio'], f['fim'], str(dias), str(deff), 'Sim' if f.get('venda_ferias') else 'Não'])
+            rows.append([_identificacao_funcionario(func), f['inicio'], f['fim'], str(dias), str(deff), 'Sim' if f.get('venda_ferias') else 'Não'])
         return rows
     paginar_tabela(d, t('rel_periodo'), resultado,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Início', 'Término', 'Dias totais', 'Dias no intervalo', 'Venda'], linhas_periodo, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Início', 'Término', 'Dias totais', 'Dias no intervalo', 'Venda'], linhas_periodo, resumo)
 
 def rel_situacao(d):
     funcs = ord_funcs(d)
@@ -3781,9 +3900,9 @@ def rel_situacao(d):
                 alertas.append(f"Vencida {pp['ini_aq'].strftime('%d/%m/%Y')}–{(pp['fim_aq']-timedelta(days=1)).strftime('%d/%m/%Y')}; concessivo até {pp['fim_con'].strftime('%d/%m/%Y')}")
             elif pp['status'] == 'a_vencer':
                 alertas.append(f"Vence {pp['fim_con'].strftime('%d/%m/%Y')} ({(pp['fim_con']-datetime.today()).days}d)")
-        return [[func['nome'], func['setor'], func['subsetor'], func.get('vinculo', '—') or '—', sit, periodo, f"{an['tirados']}/{an['max_dias']}" if an['max_dias'] else str(an['tirados']), str(an['restantes']) if an['restantes'] is not None else '—', '; '.join(alertas) or '—']]
+        return [[_identificacao_funcionario(func), sit, periodo, f"{an['tirados']}/{an['max_dias']}" if an['max_dias'] else str(an['tirados']), str(an['restantes']) if an['restantes'] is not None else '—', '; '.join(alertas) or '—']]
     paginar_tabela(d, t('rel_sit_titulo'), itens,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Vínculo', 'Situação', 'Período', 'Dias usados/limite', 'Restam', 'Pendências'], linhas_sit, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Situação', 'Período', 'Dias usados/limite', 'Restam', 'Pendências'], linhas_sit, resumo)
 
 def rel_vencidas(d):
     itens = []
@@ -3813,9 +3932,9 @@ def rel_vencidas(d):
 
     def linhas_vencidas(item):
         func = item['func']
-        return [[func['nome'], func['setor'], func['subsetor'], func.get('vinculo', '—') or '—', func.get('data_admissao', '—') or '—', pp['ini_aq'].strftime('%d/%m/%Y'), (pp['fim_aq'] - timedelta(days=1)).strftime('%d/%m/%Y'), pp['fim_con'].strftime('%d/%m/%Y')] for pp in item['vencidas']]
+        return [[_identificacao_funcionario(func), func.get('data_admissao', '—') or '—', pp['ini_aq'].strftime('%d/%m/%Y'), (pp['fim_aq'] - timedelta(days=1)).strftime('%d/%m/%Y'), pp['fim_con'].strftime('%d/%m/%Y')] for pp in item['vencidas']]
     paginar_tabela(d, titulo, itens,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Vínculo', 'Admissão', 'Início período', 'Fim período', 'Prazo concessivo'], linhas_vencidas, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Admissão', 'Início período', 'Fim período', 'Prazo concessivo'], linhas_vencidas, resumo)
 
 def _pedir_ano():
     ano_atual = datetime.today().year
@@ -3875,8 +3994,7 @@ def rel_por_ano_civil(d):
         funcs_base = ord_funcs(d, [f for f in d['funcionarios'] if f['setor'] == setor])
         filtro_label = f'Setor: {setor}'
     elif op == '3':
-        setor = sel_setor(d)
-        if not setor:
+        setor = sel_setor(d)        if not setor:
             return
         sub = sel_sub(d, setor)
         if not sub:
@@ -3888,7 +4006,7 @@ def rel_por_ano_civil(d):
         if not func:
             return
         funcs_base = [func]
-        filtro_label = func['nome']
+        filtro_label = _identificacao_funcionario(func)
     else:
         flash(t('invalido'), erro=True)
         return
@@ -3924,10 +4042,10 @@ def rel_por_ano_civil(d):
             if dias_ef != dias: obs.append(f"{dias} dias totais")
             if f.get('venda_ferias'): obs.append(t('fer_venda_lbl'))
             if ini and fim and ini.year != fim.year: obs.append(t('rel_ano_cruzou'))
-            rows.append([func['nome'], func['setor'], func['subsetor'], f['inicio'], f['fim'], status, str(dias_ef), str(dias), f"{max_d} dias" if max_d else 'Ilimitado', '; '.join(obs) or '—'])
+            rows.append([_identificacao_funcionario(func), f['inicio'], f['fim'], status, str(dias_ef), str(dias), f"{max_d} dias" if max_d else 'Ilimitado', '; '.join(obs) or '—'])
         return rows
     paginar_tabela(d, f"{t('rel_ano_titulo')} — {ano}  |  {filtro_label}", itens,
-                   ['Funcionário', 'Setor', 'Subsetor', 'Início', 'Término', 'Situação', f'Dias em {ano}', 'Dias totais', 'Limite anual', 'Observação'], linhas_ano, resumo)
+                   ['Nome | Setor | Subsetor | Vínculo', 'Início', 'Término', 'Situação', f'Dias em {ano}', 'Dias totais', 'Limite anual', 'Observação'], linhas_ano, resumo)
 
 # ---------------------------------------------------------------------------
 # Regras e validação
@@ -4158,10 +4276,8 @@ def menu_regras(d):
 
 def _render_pend(r):
     func = r['func']
-    v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
     _lvz()
-    _ln(f"  {func['nome']}{v}")
-    _ln(f"  {func['setor']}  →  {func['subsetor']}")
+    _ln(f"  {_identificacao_funcionario(func)}")
     _lvz()
     for pen in r['pendencias']:
         _ln(f"  {('[P]' if pen['tipo'] == 'periodo' else '[A]')} {pen['ref']}:")
@@ -4233,14 +4349,12 @@ def val_por_func(d):
 
     def resumo():
         _lnd(t('val_data'), datetime.today().strftime('%d/%m/%Y %H:%M'))
-        _lnd(t('rel_nome'), func['nome'])
-        _lnd(t('rel_vinculo'), func.get('vinculo', '—') or '—')
-        _lnd(t('rel_setor_l'), f"{func['setor']} → {func['subsetor']}")
+        _lnd('Funcionário', _identificacao_funcionario(func))
         _lnd(t('val_periodos'), str(len(func['ferias'])))
         _lnd(t('val_pendencias'), str(len(pends)))
     if not pends:
         limpar()
-        titulo_box(f"{t('val_func_t')}: {func['nome']}")
+        titulo_box(f"{t('val_func_t')}: {_identificacao_funcionario(func)}")
         for item in _capturar(resumo):
             _print_buf(item)
         _dleve()
@@ -4256,7 +4370,7 @@ def val_por_func(d):
         _ln(f"  {('[P]' if pen['tipo'] == 'periodo' else '[A]')} {pen['ref']}:")
         for i, e in enumerate(pen['erros'], 1):
             _ln(f'      {i}. {e}')
-    paginar(d, f"{t('val_func_t')}: {func['nome']}", pends, render_p, resumo)
+    paginar(d, f"{t('val_func_t')}: {_identificacao_funcionario(func)}", pends, render_p, resumo)
 
 def val_por_setor(d):
     limpar()
@@ -4879,8 +4993,7 @@ def _escala_selecionar_evento(eventos=None):
 
 
 def _escala_selecao_multipla(rotulo, opcoes):
-    """Seleciona várias opções por números separados por vírgula ou * para todas."""
-    opcoes = list(opcoes)
+    """Seleciona várias opções por números separados por vírgula ou * para todas."""    opcoes = list(opcoes)
     if not opcoes:
         return []
     limpar(); titulo_box(rotulo); _lvz()
@@ -5047,7 +5160,7 @@ def _escala_carregar_relatorio(escala_id):
             "COALESCE(NULLIF(TRIM(f.nome), ''), '[Funcionário não localizado]') AS nome, "
             "COALESCE(NULLIF(TRIM(f.setor), ''), 'Sem setor') AS setor, "
             "COALESCE(NULLIF(TRIM(f.subsetor), ''), 'Sem subsetor') AS subsetor, "
-            "COALESCE(NULLIF(TRIM(f.vinculo), ''), '—') AS vinculo, "
+            "COALESCE(NULLIF(TRIM(f.vinculo), ''), 'Sem vínculo') AS vinculo, "
             "CASE WHEN ef.situacao IN ('T','N','P') THEN ef.situacao ELSE 'P' END AS situacao, "
             "COALESCE(NULLIF(TRIM(ef.observacao), ''), '—') AS observacao, "
             "ef.id AS vinculo_id "
@@ -5205,10 +5318,7 @@ def escala_especial_relatorio(escala):
             cod = item['situacao']
             status = _c_success('TRABALHARÁ') if cod == 'T' else (
                 _c_error('NÃO TRABALHARÁ') if cod == 'N' else _c_warning('PENDENTE'))
-            setor = str(item['setor'] or 'Sem setor')
-            subsetor = str(item['subsetor'] or 'Sem subsetor')
-            _ln('  ' + _c_menu(item['nome']) + '  ' +
-                _c_muted(f"{setor} / {subsetor} • {item['vinculo'] or '—'}") + '  ' + status)
+            _ln('  ' + _c_menu(_identificacao_funcionario(item)) + '  ' + status)
         _dleve()
         _ln(_c_muted(_pagina_nav(idx, len(paginas))), 'center')
         fundo()
