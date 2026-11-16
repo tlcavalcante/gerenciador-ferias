@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 4.8.5 — Modernização dos gráficos e indicadores
+- Atualiza a apresentação dos gráficos de evolução mensal de férias, com indicadores consolidados, barras proporcionais e sinalização do mês corrente.
+- Mantém escala comum nas comparações por setor e por subsetor dentro do setor selecionado.
+- Organiza a visão individual com comparação entre dias do mês e acumulado no período.
+- Inclui detalhamento mensal da participação por funcionário.
+- Atualiza o gráfico completo do Banco de Horas para visão divergente, com saldos negativos à esquerda, positivos à direita e escala pelo maior saldo absoluto.
+- Padroniza visualmente as barras de progresso dos indicadores de férias.
+- Acrescenta testes automatizados para proporção, limites, valores inválidos, eixo central e quebra dos indicadores conforme a largura do terminal.
+
 ## 4.8.3 — Padronização das telas de seleção de funcionários
 - Unifica a identificação dos funcionários nas seleções individuais e múltiplas.
 - Exibe nome, setor, subsetor e vínculo na mesma linha.

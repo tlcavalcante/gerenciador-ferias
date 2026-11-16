@@ -1,7 +1,27 @@
-# Checklist de testes e validação — versão 4.8.3
+# Checklist de testes e validação — versão 4.8.5
 
 ## Limite da validação
-A compilação sintática, os testes automatizados da suíte e a homologação interativa devem ser avaliados separadamente. Marque os itens somente após a respectiva execução.
+A compilação sintática, os testes automatizados da suíte e a homologação interativa devem ser avaliados separadamente. Marque os itens somente após a respectiva execução. Testes de renderização com funções auxiliares não substituem inspeção no terminal utilizado na instalação.
+
+## Gráficos e indicadores
+- [ ] Evolução mensal da empresa: conferir dias agendados, meses ativos, média mensal, funcionários por mês e pico simultâneo.
+- [ ] Selecionar janelas de 3, 6, 12 e 24 meses; confirmar mês corrente e navegação/retorno.
+- [ ] Detalhamento `P`: conferir lista mensal de funcionários e ordenação por dias utilizados.
+- [ ] Visão por setor: validar os totais e a mesma escala em todos os setores.
+- [ ] Visão por subsetor: validar seleção do setor, subsetores disponíveis e escala comum dentro do setor.
+- [ ] Visão individual: conferir dias por mês, acumulado, data de admissão e período aquisitivo quando aplicável.
+- [ ] Indicadores de progresso: verificar zero, valor parcial, 100% e valor acima do limite.
+- [ ] Gráfico do Banco de Horas: conferir saldo negativo à esquerda, saldo zero no eixo central e positivo à direita.
+- [ ] Gráfico do Banco de Horas: testar escala com valores de magnitudes diferentes, filtro de saldos zerados e paginação.
+- [ ] Inspecionar em terminal estreito e largo, com cores ANSI e com `NO_COLOR=1`.
+
+## Testes automatizados do layout
+- [x] Barra horizontal: largura fixa, proporção parcial, limite superior e valores negativos.
+- [x] Barra horizontal: escala zero e valor inválido.
+- [x] Barra divergente: sinal negativo, zero, positivo, eixo central e saturação pela escala.
+- [x] Indicadores: quebra de linha conforme a largura do terminal.
+- [ ] Executar a suíte integral em cada versão Python declarada no workflow.
+- [ ] Construir e instalar o pacote em ambiente virtual limpo.
 
 ## Seleção de funcionários
 - [ ] Todas as seleções individuais exibem nome, setor, subsetor e vínculo, nessa ordem e na mesma linha.

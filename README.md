@@ -1,4 +1,4 @@
-# Gerenciador de Férias — versão 4.8.3
+# Gerenciador de Férias — versão 4.8.5
 
 Aplicação CLI em Python para gestão de férias, escalas especiais e Banco de Horas, com persistência local em SQLite.
 
@@ -18,6 +18,16 @@ Na primeira execução, cadastre o administrador quando solicitado. Não existe 
 - Calendário e relatórios por funcionário, setor, subsetor e período.
 - Relatório de férias coincidentes, com funcionários envolvidos, períodos originais e intervalo de sobreposição.
 - Seletores de funcionários padronizados com nome, setor, subsetor e vínculo.
+
+### Gráficos e indicadores
+- Evolução mensal de férias da empresa, com dias agendados, meses ativos, média, quantidade de funcionários por mês e pico de pessoas simultaneamente em férias.
+- Evolução por setor, usando escala comum entre os setores para permitir comparação direta.
+- Evolução por subsetor, usando escala comum dentro do setor selecionado.
+- Evolução individual, com dias utilizados em cada mês, acumulado no período e informações do período aquisitivo quando aplicável.
+- Detalhamento mensal da participação por funcionário, ordenado pela quantidade de dias no mês.
+- Seleção de janelas de 3, 6, 12 ou 24 meses; o mês corrente recebe indicação visual.
+- Indicadores de progresso de férias com barras proporcionais e valores percentuais.
+- Gráfico completo do Banco de Horas em formato divergente: saldos negativos à esquerda e positivos à direita, com referência central e escala pelo maior saldo absoluto.
 
 ### Banco de Horas
 - Lançamentos de crédito, débito e ajuste em HH:MM.
@@ -55,7 +65,7 @@ Não publique banco de dados, backups, exportações com dados reais de funcion�
 - Checklist de release: [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md)
 
 ## Testes
-A compilação sintática pode ser verificada com `python3 -m py_compile gerenciador_ferias.py`. Isso não substitui os testes funcionais e a homologação descritos em [docs/TESTES-E-VALIDACAO.md](docs/TESTES-E-VALIDACAO.md).
+A compilação sintática pode ser verificada com `python3 -m py_compile gerenciador_ferias.py`. Para executar os testes automatizados, instale `pytest` e execute `python3 -m pytest -q`. Isso não substitui a homologação interativa descrita em [docs/TESTES-E-VALIDACAO.md](docs/TESTES-E-VALIDACAO.md).
 
 ## Licença
 MIT. Consulte [LICENSE](LICENSE).
