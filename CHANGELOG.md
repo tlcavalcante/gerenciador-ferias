@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 4.8.3 — Padronização das telas de seleção de funcionários
+- Unifica a identificação dos funcionários nas seleções individuais e múltiplas.
+- Exibe nome, setor, subsetor e vínculo na mesma linha.
+- Aplica o mesmo formato nas etapas de adicionar, revisar e remover funcionários da seleção múltipla.
+- Centraliza a formatação em uma única função para evitar divergências entre telas.
+
 ## 4.8.2 — Consolidação visual dos relatórios do Banco de Horas
 - Apresenta posição, funcionário, unidade organizacional e saldo em formato compacto nos rankings.
 - Remove linhas horizontais entre os registros.

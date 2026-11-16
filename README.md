@@ -1,4 +1,4 @@
-# Gerenciador de Férias — versão 4.8.2
+# Gerenciador de Férias — versão 4.8.3
 
 Aplicação CLI em Python para gestão de férias, escalas especiais e Banco de Horas, com persistência local em SQLite.
 
@@ -7,7 +7,7 @@ Aplicação CLI em Python para gestão de férias, escalas especiais e Banco de 
 - Linux/Unix e terminal UTF-8 recomendados.
 - SQLite da biblioteca padrão; nenhuma dependência externa para executar o script autônomo.
 
-Execute com: python3 gerenciador_ferias.py
+Execute com: `python3 gerenciador_ferias.py`
 
 Na primeira execução, cadastre o administrador quando solicitado. Não existe senha administrativa padrão.
 
@@ -17,6 +17,7 @@ Na primeira execução, cadastre o administrador quando solicitado. Não existe 
 - Agendamento, cancelamento, regras e validações.
 - Calendário e relatórios por funcionário, setor, subsetor e período.
 - Relatório de férias coincidentes, com funcionários envolvidos, períodos originais e intervalo de sobreposição.
+- Seletores de funcionários padronizados com nome, setor, subsetor e vínculo.
 
 ### Banco de Horas
 - Lançamentos de crédito, débito e ajuste em HH:MM.
@@ -37,24 +38,24 @@ Na primeira execução, cadastre o administrador quando solicitado. Não existe 
 - Consulta da trilha restrita a administradores.
 
 ## Dados e backup
-O diretório de dados é determinado nesta ordem: variável GERENCIADOR_FERIAS_DATA_DIR; diretório XDG_DATA_HOME/gerenciador-ferias; ou ~/.local/share/gerenciador-ferias.
+O diretório de dados é determinado nesta ordem: variável `GERENCIADOR_FERIAS_DATA_DIR`; diretório `XDG_DATA_HOME/gerenciador-ferias`; ou `~/.local/share/gerenciador-ferias`.
 
-O banco principal é dados_ferias.db e os backups ficam em backups/.
+O banco principal é `dados_ferias.db` e os backups ficam em `backups/`.
 
-Não publique banco de dados, backups, exportações com dados reais de funcionários, logs ou credenciais no Git. Antes de atualizar, faça backup e siga docs/ATUALIZACAO.md.
+Não publique banco de dados, backups, exportações com dados reais de funcionários, logs ou credenciais no Git. Antes de atualizar, faça backup e siga [docs/ATUALIZACAO.md](docs/ATUALIZACAO.md).
 
 ## Documentação
-- Arquitetura: ARCHITECTURE.md
-- Operação: docs/OPERACAO.md
-- Atualização e reversão: docs/ATUALIZACAO.md
-- Testes e validação: docs/TESTES-E-VALIDACAO.md
-- Segurança e backup: docs/SEGURANCA-E-BACKUP.md
-- Trilha de auditoria: docs/AUDITORIA.md
-- Histórico: CHANGELOG.md
-- Checklist de release: RELEASE-CHECKLIST.md
+- Arquitetura: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Operação: [docs/OPERACAO.md](docs/OPERACAO.md)
+- Atualização e reversão: [docs/ATUALIZACAO.md](docs/ATUALIZACAO.md)
+- Testes e validação: [docs/TESTES-E-VALIDACAO.md](docs/TESTES-E-VALIDACAO.md)
+- Segurança e backup: [docs/SEGURANCA-E-BACKUP.md](docs/SEGURANCA-E-BACKUP.md)
+- Trilha de auditoria: [docs/AUDITORIA.md](docs/AUDITORIA.md)
+- Histórico: [CHANGELOG.md](CHANGELOG.md)
+- Checklist de release: [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md)
 
 ## Testes
-A compilação sintática pode ser verificada com python3 -m py_compile gerenciador_ferias.py. Isso não substitui os testes funcionais e a homologação descritos em docs/TESTES-E-VALIDACAO.md.
+A compilação sintática pode ser verificada com `python3 -m py_compile gerenciador_ferias.py`. Isso não substitui os testes funcionais e a homologação descritos em [docs/TESTES-E-VALIDACAO.md](docs/TESTES-E-VALIDACAO.md).
 
 ## Licença
-MIT. Consulte LICENSE.
+MIT. Consulte [LICENSE](LICENSE).

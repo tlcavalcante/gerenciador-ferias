@@ -3,7 +3,7 @@
 """
 Gerenciador de Férias — aplicação CLI para equipes Linux.
 
-Versão: 4.8.2
+Versão: 4.8.3
 
 Aplicação local, sem dependências externas, baseada em SQLite. O programa
 mantém o histórico de férias, regras, usuários, relatórios, validações,
@@ -43,7 +43,7 @@ for _locale_name in ('pt_BR.UTF-8', 'pt_BR'):
     except locale.Error:
         continue
 APP_NAME = 'gerenciador-ferias'
-APP_VERSION = '4.8.2'
+APP_VERSION = '4.8.3'
 
 def _data_dir() -> Path:
     configured = os.environ.get('GERENCIADOR_FERIAS_DATA_DIR')
@@ -1197,26 +1197,36 @@ def sel_sub(d, setor):
     if 1 <= e <= len(subs): return subs[e-1]
     flash(t('fora_intervalo'), erro=True); return None
 
-def sel_func(d, msg=None, setor_mesma_linha=False):
+def _rotulo_funcionario_selecao(func):
+    """Monta a identificação padronizada usada nas listas de seleção."""
+    nome = str(func.get('nome') or 'Nome não informado').strip()
+    setor = str(func.get('setor') or 'Sem setor').strip()
+    subsetor = str(func.get('subsetor') or 'Sem subsetor').strip()
+    vinculo = str(func.get('vinculo') or 'Sem vínculo').strip()
+    return (
+        f"{_c_menu(nome)} | {_c_muted(setor)} | "
+        f"{_c_muted(subsetor)} | {_c_muted(vinculo)}"
+    )
+
+
+def sel_func(d, msg=None):
+    """Seleciona um funcionário exibindo todos os dados de identificação."""
     funcs = ord_funcs(d)
     if not funcs:
         flash(t('nenhum_func'), erro=True)
         return None
     msg = msg or t('opcao')
     limpar(); titulo_box(t('fun_titulo'))
-    _ln(t('fun_lista'), 'center'); _dleve()
-    for i, f in enumerate(funcs, 1):
-        vinc = f" · {f.get('vinculo')}" if f.get('vinculo') else ''
-        local = f"{f['setor']} / {f['subsetor']}"
-        if setor_mesma_linha:
-            _ln(f'  {_c_input(str(i).rjust(len(str(len(funcs)))))}  {_c_menu(f["nome"])} — {_c_muted(local)}{vinc}')
-        else:
-            _ln(f'  {_c_input(str(i).rjust(len(str(len(funcs)))))}  {_c_menu(f["nome"])}{vinc}')
-            _ln(f'     {_c_muted(local)}')
+    _ln(t('fun_lista'), 'center')
+    _ln('  ' + _c_muted('Nome | Setor | Subsetor | Vínculo'))
+    _dleve()
+    for i, func in enumerate(funcs, 1):
+        numero = str(i).rjust(len(str(len(funcs))))
+        _ln(f'  {_c_input(numero)}  {_rotulo_funcionario_selecao(func)}')
     _dleve(); _ln(f'  {_c_input("0")}  {_c_menu(t("cancelar"))}')
     fundo()
     try:
-        e=int(inp(msg).strip())
+        e = int(inp(msg).strip())
     except ValueError:
         flash(t('so_numero'), erro=True); return None
     if e == 0: return None
@@ -2538,7 +2548,7 @@ def _bh_render_saldo(func, detalhe=True):
             _ln(f"    Registrado em: {linha[4]}")
 
 def bh_consultar_saldo(d):
-    func = sel_func(d, setor_mesma_linha=True)
+    func = sel_func(d)
     if not func:
         return
     limpar(); titulo_box(t('bh_saldo'))
@@ -2550,7 +2560,7 @@ def bh_consultar_saldo(d):
 def _bh_lancar(d, tipo):
     """Registra crédito ou débito por duração HH:MM; a data é apenas auditoria automática."""
     limpar(); titulo_box(t('bh_credito' if tipo == 'C' else 'bh_debito')); _lvz(); fundo()
-    func = sel_func(d, setor_mesma_linha=True)
+    func = sel_func(d)
     if not func: return
     p(); p(f"  {_bh_identificacao_func(func)}"); p()
     horas_s = inp(t('bh_horas')).strip()
@@ -2567,7 +2577,7 @@ def _bh_lancar(d, tipo):
 
 def bh_extrato(d):
     limpar(); titulo_box(t('bh_extrato')); _lvz(); fundo()
-    func = sel_func(d, setor_mesma_linha=True)
+    func = sel_func(d)
     if not func: return
     con = _conn()
     try:
@@ -2837,7 +2847,7 @@ def bh_ajustar_saldo(d):
         _ln('  Exemplo: saldo atual +12:30; relatório mensal +08:00; será lançado -04:30.')
     _ln('  O histórico anterior será preservado; o sistema registrará um ajuste de auditoria.')
     _lvz(); fundo()
-    func = sel_func(d, setor_mesma_linha=True)
+    func = sel_func(d)
     if not func: return
     saldo_atual = _bh_resumo_func(func)['saldo']
     p(); p(f"  {_bh_identificacao_func(func)}")
@@ -2916,7 +2926,7 @@ def agendar_ferias(d):
     titulo_box(t('fer_agendar'))
     _lvz()
     fundo()
-    func = sel_func(d, setor_mesma_linha=True)
+    func = sel_func(d)
     if not func:
         return
     v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
@@ -3470,13 +3480,13 @@ def _tela_selecao_funcionarios(d):
         titulo_box(t('rel_multi_titulo'))
         _lvz()
         _ln(f"  {t('rel_multi_lista')}  ({len(selecionados)} {t('rel_selecionados')})")
+        _ln('  ' + _c_muted('Nome | Setor | Subsetor | Vínculo'))
         _dleve()
         if not selecionados:
             _ln(f"  — {t('rel_multi_vazio')} —", 'center')
         else:
             for i, func in enumerate(selecionados, 1):
-                v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
-                _ln(f"  {i}. {func['nome']}{v}  ({func['setor']} → {func['subsetor']})")
+                _ln(f"  {i}. {_rotulo_funcionario_selecao(func)}")
                 _ln(_linha_periodo_atual(func, d))
         _lvz()
         _dleve()
@@ -3493,10 +3503,11 @@ def _tela_selecao_funcionarios(d):
             limpar()
             titulo_box(t('rel_multi_titulo'))
             _lvz()
+            _ln('  ' + _c_muted('Nome | Setor | Subsetor | Vínculo'))
+            _dleve()
             for i, func in enumerate(todos, 1):
-                v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
                 mrk = ' ✓' if func.get('_id') in ids_sel else ''
-                _ln(f"  {i}. {func['nome']}{v}  ({func['setor']} → {func['subsetor']}){mrk}")
+                _ln(f"  {i}. {_rotulo_funcionario_selecao(func)}{mrk}")
             _lvz()
             _dleve()
             _ln(f"  0. {t('voltar')}  |  * = selecionar todos")
@@ -3537,9 +3548,10 @@ def _tela_selecao_funcionarios(d):
             limpar()
             titulo_box(t('rel_multi_titulo'))
             _lvz()
+            _ln('  ' + _c_muted('Nome | Setor | Subsetor | Vínculo'))
+            _dleve()
             for i, func in enumerate(selecionados, 1):
-                v = f" [{func.get('vinculo', '')}]" if func.get('vinculo') else ''
-                _ln(f"  {i}. {func['nome']}{v}")
+                _ln(f"  {i}. {_rotulo_funcionario_selecao(func)}")
             _lvz()
             _dleve()
             _ln(f"  0. {t('cancelar')}  |  * = limpar tudo")

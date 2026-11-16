@@ -1,4 +1,4 @@
-# Guia de operação — versão 4.8.2
+# Guia de operação — versão 4.8.3
 
 ## Módulos
 - Cadastros: funcionários, setores, subsetores e vínculos.
@@ -8,6 +8,9 @@
 - Regras de férias: parâmetros por nível de abrangência.
 - Validação, configurações e administração: validações, preferências, usuários, backup e auditoria.
 - Escalas especiais: planejamento de cobertura em feriados prolongados, recessos e outras ocasiões.
+
+## Seleção de funcionários
+Todas as telas de seleção individual e múltipla utilizam a mesma identificação, na ordem: **Nome | Setor | Subsetor | Vínculo**. A seleção múltipla mantém esse padrão ao exibir os funcionários escolhidos, listar candidatos para inclusão e apresentar os registros disponíveis para remoção. Campos não preenchidos são indicados como “Sem setor”, “Sem subsetor” ou “Sem vínculo”.
 
 ## Férias coincidentes
 O relatório compara períodos de funcionários diferentes no escopo selecionado. Cada ocorrência apresenta os funcionários, suas unidades, períodos originais, intervalo comum e quantidade de dias coincidentes. As datas inicial e final são consideradas no cálculo.
@@ -23,4 +26,4 @@ Os rankings apresentam posição, funcionário, unidade organizacional e saldo e
 Cadastre a ocasião, intervalo e escopo. A situação pode ser trabalhou, não trabalhou ou pendente. Se a situação variar durante o intervalo, registre períodos distintos. Escalas não alteram automaticamente férias ou Banco de Horas.
 
 ## Trilha de auditoria
-A consulta fica no menu Administração e exige perfil administrador. Exibe os eventos mais recentes, data/hora, usuário, ação, entidade, identificador e detalhes. Consulte AUDITORIA.md para cobertura e limitações.
+A consulta fica no menu Administração e exige perfil administrador. Exibe os eventos mais recentes, data/hora, usuário, ação, entidade, identificador e detalhes. Consulte [AUDITORIA.md](AUDITORIA.md) para cobertura e limitações.

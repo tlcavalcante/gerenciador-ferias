@@ -1,7 +1,16 @@
-# Checklist de testes e validação — versão 4.8.2
+# Checklist de testes e validação — versão 4.8.3
 
 ## Limite da validação
-A compilação sintática e testes pontuais de inicialização SQLite e trilha foram executados durante a preparação. A suíte funcional completa e a homologação interativa ainda precisam ser executadas. Marque itens somente após execução.
+A compilação sintática, os testes automatizados da suíte e a homologação interativa devem ser avaliados separadamente. Marque os itens somente após a respectiva execução.
+
+## Seleção de funcionários
+- [ ] Todas as seleções individuais exibem nome, setor, subsetor e vínculo, nessa ordem e na mesma linha.
+- [ ] Campos ausentes exibem os indicadores “Sem setor”, “Sem subsetor” e “Sem vínculo”.
+- [ ] A seleção múltipla exibe os quatro campos ao mostrar os funcionários já selecionados.
+- [ ] A lista de candidatos para inclusão exibe os quatro campos e mantém o marcador dos já selecionados.
+- [ ] A lista de funcionários para remoção exibe os quatro campos.
+- [ ] Selecionar todos, adicionar e remover funcionários preserva os IDs e a ordem escolhida.
+- [ ] A escolha do funcionário continua retornando o registro correto após a mudança de apresentação.
 
 ## Preparação e autenticação
 - [ ] Usar cópia isolada do banco e confirmar backup restaurável.
