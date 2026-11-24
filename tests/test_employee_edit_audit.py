@@ -22,6 +22,18 @@ def app(tmp_path, monkeypatch):
 def preparar_colaborador(app, segundo=False):
     con = app._conn()
     try:
+        con.execute("INSERT INTO setores(nome) VALUES(?)", ("Administrativo",))
+        con.execute("INSERT INTO setores(nome) VALUES(?)", ("Tecnologia",))
+        con.execute(
+            "INSERT INTO subsetores(setor,nome) VALUES(?,?)",
+            ("Administrativo", "Pessoal"),
+        )
+        con.execute(
+            "INSERT INTO subsetores(setor,nome) VALUES(?,?)",
+            ("Tecnologia", "Redes"),
+        )
+        con.execute("INSERT INTO vinculos(nome) VALUES(?)", ("Servidor",))
+        con.execute("INSERT INTO vinculos(nome) VALUES(?)", ("CLT",))
         con.execute(
             "INSERT INTO usuarios(login,nome,senha_hash,nivel) VALUES(?,?,?,?)",
             ("admin", "Administrador", "hash-de-teste", "admin"),
