@@ -1,4 +1,4 @@
-# Guia de operação — versão 4.8.5
+# Guia de operação — versão 4.9.0
 
 ## Módulos
 - Cadastros: funcionários, setores, subsetores e vínculos.
@@ -9,6 +9,20 @@
 - Regras de férias: parâmetros por nível de abrangência.
 - Validação, configurações e administração: validações, preferências, usuários, backup e auditoria.
 - Escalas especiais: planejamento de cobertura em feriados prolongados, recessos e outras ocasiões.
+
+## Alterar cadastro de colaborador
+
+A alteração cadastral é restrita ao perfil administrador. Acesse **Cadastros > Funcionários > Alterar cadastro de colaborador** (opção 6). Selecione o colaborador e informe os novos valores para nome, setor, subsetor, vínculo e data de admissão.
+
+- Pressione ENTER para manter o valor atual.
+- No campo data de admissão, informe a data em DD/MM/AAAA; ENTER mantém a data existente e hífen remove a informação.
+- Para vínculo, selecione uma opção cadastrada ou a opção 0 para deixar o colaborador sem vínculo.
+- Nome, setor e subsetor são obrigatórios. O sistema impede nomes duplicados no mesmo setor/subsetor.
+- Confira a comparação dos valores antes/depois, informe um motivo entre 5 e 1.000 caracteres e confirme a operação.
+
+O sistema atualiza apenas o cadastro do colaborador. Os períodos de férias e os lançamentos de Banco de Horas são preservados. A alteração e os registros de auditoria são gravados na mesma transação SQLite. Ao alterar setor ou subsetor, os relatórios organizacionais passam a considerar a lotação atual também nas consultas históricas.
+
+Consulte [EDICAO-CADASTRO-FUNCIONARIOS.md](EDICAO-CADASTRO-FUNCIONARIOS.md) para detalhes das regras e da trilha de auditoria.
 
 ## Seleção de funcionários
 Todas as telas de seleção individual e múltipla utilizam a mesma identificação, na ordem: **Nome | Setor | Subsetor | Vínculo**. A seleção múltipla mantém esse padrão ao exibir os funcionários escolhidos, listar candidatos para inclusão e apresentar os registros disponíveis para remoção. Campos não preenchidos são indicados como “Sem setor”, “Sem subsetor” ou “Sem vínculo”.
