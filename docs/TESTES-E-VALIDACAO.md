@@ -1,4 +1,4 @@
-# Checklist de testes e validação — versão 4.8.5
+# Checklist de testes e validação — versão 4.9.0
 
 ## Limite da validação
 A compilação sintática, os testes automatizados da suíte e a homologação interativa devem ser avaliados separadamente. Marque os itens somente após a respectiva execução. Testes de renderização com funções auxiliares não substituem inspeção no terminal utilizado na instalação.
@@ -22,6 +22,23 @@ A compilação sintática, os testes automatizados da suíte e a homologação i
 - [x] Indicadores: quebra de linha conforme a largura do terminal.
 - [ ] Executar a suíte integral em cada versão Python declarada no workflow.
 - [ ] Construir e instalar o pacote em ambiente virtual limpo.
+
+## Edição do cadastro de colaboradores
+- [ ] Perfil administrador visualiza a opção 6 no menu de funcionários.
+- [ ] Perfil comum não visualiza a opção e não consegue executar a rotina diretamente.
+- [ ] Selecionar colaborador e manter campos com ENTER não altera os respectivos valores.
+- [ ] Alterar nome, setor, subsetor, vínculo e data de admissão.
+- [ ] Remover data de admissão com hífen e deixar vínculo vazio pela opção 0.
+- [ ] Rejeitar nome, setor ou subsetor vazio.
+- [ ] Rejeitar setor sem subsetores cadastrados e subsetor incompatível com o setor escolhido.
+- [ ] Rejeitar data de admissão inválida.
+- [ ] Rejeitar nome duplicado no mesmo setor/subsetor, inclusive diferença apenas de maiúsculas/minúsculas.
+- [ ] Exigir motivo entre 5 e 1.000 caracteres e confirmação final.
+- [ ] Cancelar a operação e verificar que dados e trilha permanecem sem alteração.
+- [ ] Conferir evento UPDATE com JSON anterior/posterior e evento ATUALIZACAO_CADASTRO com justificativa, usuário, data/hora e registro_id.
+- [ ] Simular falha durante a gravação e verificar rollback da alteração e dos eventos.
+- [ ] Confirmar que os IDs e os registros de férias e Banco de Horas permanecem inalterados.
+- [ ] Alterar setor/subsetor e validar que relatórios organizacionais usam a lotação atual.
 
 ## Seleção de funcionários
 - [ ] Todas as seleções individuais exibem nome, setor, subsetor e vínculo, nessa ordem e na mesma linha.
