@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 4.9.0 — Edição auditada de cadastro de colaboradores
+- Inclui opção de edição de cadastro de colaboradores, disponível somente para administradores.
+- Permite alterar nome, setor, subsetor, vínculo e data de admissão, com validação dos campos obrigatórios e da data.
+- Impede nomes duplicados dentro do mesmo setor/subsetor, sem diferenciar maiúsculas e minúsculas.
+- Exige justificativa e confirmação antes da gravação.
+- Atualiza somente o registro do colaborador em transação SQLite, sem recriar períodos de férias ou lançamentos do Banco de Horas.
+- Registra os estados anterior e posterior pelo gatilho UPDATE e grava evento ATUALIZACAO_CADASTRO com a justificativa.
+- Mantém a atualização e os dois registros de auditoria na mesma transação, com rollback em caso de falha.
+- Documenta o fluxo, os controles, as consequências para relatórios e os testes de homologação.
+
 ## 4.8.5 — Modernização dos gráficos e indicadores
 - Atualiza a apresentação dos gráficos de evolução mensal de férias, com indicadores consolidados, barras proporcionais e sinalização do mês corrente.
 - Mantém escala comum nas comparações por setor e por subsetor dentro do setor selecionado.

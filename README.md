@@ -1,4 +1,4 @@
-# Gerenciador de Férias — versão 4.8.5
+# Gerenciador de Férias — versão 4.9.0
 
 Aplicação CLI em Python para gestão de férias, escalas especiais e Banco de Horas, com persistência local em SQLite.
 
@@ -44,6 +44,7 @@ Na primeira execução, cadastre o administrador quando solicitado. Não existe 
 
 ### Administração
 - Gestão de usuários, perfis e backups.
+- Edição controlada do cadastro de colaboradores, exclusiva para administradores, com justificativa obrigatória e registro dos estados anterior e posterior.
 - Trilha de auditoria com data/hora, usuário, ação, entidade, identificador e detalhes das alterações.
 - Consulta da trilha restrita a administradores.
 
@@ -61,6 +62,7 @@ Não publique banco de dados, backups, exportações com dados reais de funcion�
 - Testes e validação: [docs/TESTES-E-VALIDACAO.md](docs/TESTES-E-VALIDACAO.md)
 - Segurança e backup: [docs/SEGURANCA-E-BACKUP.md](docs/SEGURANCA-E-BACKUP.md)
 - Trilha de auditoria: [docs/AUDITORIA.md](docs/AUDITORIA.md)
+- Edição de cadastro de colaboradores: [docs/EDICAO-CADASTRO-FUNCIONARIOS.md](docs/EDICAO-CADASTRO-FUNCIONARIOS.md)
 - Histórico: [CHANGELOG.md](CHANGELOG.md)
 - Checklist de release: [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md)
 

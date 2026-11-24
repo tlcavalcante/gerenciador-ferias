@@ -43,7 +43,7 @@ for _locale_name in ('pt_BR.UTF-8', 'pt_BR'):
     except locale.Error:
         continue
 APP_NAME = 'gerenciador-ferias'
-APP_VERSION = '4.8.5'
+APP_VERSION = '4.9.0'
 
 def _data_dir() -> Path:
     configured = os.environ.get('GERENCIADOR_FERIAS_DATA_DIR')
@@ -5590,6 +5590,370 @@ def menu_principal():
     SESSAO['nome'] = None
     SESSAO['nivel'] = None
     limpar(); p('Encerrando.'); p()
+
+
+# ---------------------------------------------------------------------------
+# Edição controlada do cadastro de colaboradores com auditoria
+# ---------------------------------------------------------------------------
+
+_CAMPOS_FUNCIONARIO_EDICAO = (
+    ("nome", "Nome"),
+    ("setor", "Setor"),
+    ("subsetor", "Subsetor"),
+    ("vinculo", "Vínculo"),
+    ("data_admissao", "Data de admissão"),
+)
+
+
+def _escolher_item_cadastro(rotulo, opcoes, atual, permitir_sem=False, obrigatorio=False):
+    """Seleciona um item cadastrado; ENTER mantém o valor atual."""
+    opcoes = list(opcoes)
+    p()
+    p(f"  {rotulo} atual: {atual or '—'}")
+    if not opcoes:
+        p("  Nenhuma opção cadastrada.")
+        return atual
+    p(f"  Novo {rotulo.lower()} (ENTER mantém o atual):")
+    for indice, opcao in enumerate(opcoes, 1):
+        p(f"    {indice}. {opcao}")
+    if permitir_sem:
+        p("    0. Sem vínculo")
+    entrada = inp("  Número: ").strip()
+    if not entrada:
+        if obrigatorio and atual not in opcoes:
+            flash(f"Selecione um {rotulo.lower()} válido para continuar.", erro=True)
+            return None
+        return atual
+    if permitir_sem and entrada == "0":
+        return ""
+    if not entrada.isdigit() or not (1 <= int(entrada) <= len(opcoes)):
+        flash(f"Opção inválida para {rotulo.lower()}; nenhuma alteração foi gravada.", erro=True)
+        return None
+    return opcoes[int(entrada) - 1]
+
+
+def _gravar_edicao_funcionario(funcionario, novos_dados, motivo):
+    """Atualiza somente o cadastro e registra os eventos na mesma transação."""
+    if SESSAO.get("nivel") != "admin":
+        flash("Acesso restrito ao Administrador.", erro=True)
+        return False
+
+    motivo = str(motivo or "").strip()
+    if not 5 <= len(motivo) <= 1000:
+        flash("O motivo deve conter entre 5 e 1.000 caracteres.", erro=True)
+        return False
+
+    funcionario_id = funcionario.get("_id")
+    if not funcionario_id:
+        flash("Não foi possível identificar o registro do colaborador.", erro=True)
+        return False
+
+    campos = [campo for campo, _ in _CAMPOS_FUNCIONARIO_EDICAO]
+    con = _conn()
+    try:
+        con.execute("BEGIN IMMEDIATE")
+        atual_row = con.execute(
+            "SELECT id, nome, setor, subsetor, vinculo, data_admissao "
+            "FROM funcionarios WHERE id=?",
+            (funcionario_id,),
+        ).fetchone()
+        if atual_row is None:
+            con.rollback()
+            flash("O cadastro não foi encontrado. Atualize a lista de colaboradores.", erro=True)
+            return False
+
+        antes = {campo: str(atual_row[campo] or "") for campo in campos}
+        fotografia_memoria = {
+            campo: str(funcionario.get(campo, "") or "") for campo in campos
+        }
+        if antes != fotografia_memoria:
+            con.rollback()
+            flash(
+                "O cadastro foi alterado por outra operação. Reabra a edição para evitar sobrescrever dados.",
+                erro=True,
+            )
+            return False
+
+        depois = {
+            campo: str(novos_dados.get(campo, antes[campo]) or "").strip()
+            for campo in campos
+        }
+        if not depois["nome"] or not depois["setor"] or not depois["subsetor"]:
+            con.rollback()
+            flash("Nome, setor e subsetor são obrigatórios.", erro=True)
+            return False
+
+        if con.execute(
+            "SELECT 1 FROM setores WHERE nome=?", (depois["setor"],)
+        ).fetchone() is None:
+            con.rollback()
+            flash("O setor informado não está cadastrado.", erro=True)
+            return False
+        if con.execute(
+            "SELECT 1 FROM subsetores WHERE setor=? AND nome=?",
+            (depois["setor"], depois["subsetor"]),
+        ).fetchone() is None:
+            con.rollback()
+            flash("O subsetor informado não pertence ao setor selecionado.", erro=True)
+            return False
+        if depois["vinculo"] and con.execute(
+            "SELECT 1 FROM vinculos WHERE nome=?", (depois["vinculo"],)
+        ).fetchone() is None:
+            con.rollback()
+            flash("O vínculo informado não está cadastrado.", erro=True)
+            return False
+
+        if depois["data_admissao"] and not conv_data(depois["data_admissao"]):
+            con.rollback()
+            flash("Data de admissão inválida.", erro=True)
+            return False
+
+        candidatos = con.execute(
+            "SELECT id, nome FROM funcionarios "
+            "WHERE setor=? AND subsetor=? AND id<>?",
+            (depois["setor"], depois["subsetor"], funcionario_id),
+        ).fetchall()
+        duplicado = any(
+            str(candidato["nome"] or "").casefold() == depois["nome"].casefold()
+            for candidato in candidatos
+        )
+        if duplicado:
+            con.rollback()
+            flash(
+                "Já existe outro colaborador com esse nome no setor/subsetor selecionado.",
+                erro=True,
+            )
+            return False
+
+        alteracoes = {
+            campo: {"antes": antes[campo], "depois": depois[campo]}
+            for campo in campos
+            if antes[campo] != depois[campo]
+        }
+        if not alteracoes:
+            con.rollback()
+            flash("Nenhuma alteração identificada. O cadastro foi mantido.")
+            return False
+
+        con.execute(
+            "UPDATE funcionarios SET nome=?, setor=?, subsetor=?, vinculo=?, data_admissao=? "
+            "WHERE id=?",
+            (
+                depois["nome"], depois["setor"], depois["subsetor"],
+                depois["vinculo"], depois["data_admissao"], funcionario_id,
+            ),
+        )
+        if con.execute("SELECT changes()").fetchone()[0] != 1:
+            raise RuntimeError("A atualização não afetou exatamente um registro.")
+
+        login = SESSAO.get("login") or "sistema"
+        nome_usuario = SESSAO.get("nome") or login
+        usuario = con.execute(
+            "SELECT id FROM usuarios WHERE login=?", (login,)
+        ).fetchone()
+        usuario_id = usuario["id"] if usuario else None
+        detalhes = json.dumps(
+            {
+                "motivo": motivo,
+                "colaborador": depois["nome"],
+                "alteracoes": alteracoes,
+                "historicos_preservados": ["ferias", "banco_horas"],
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        con.execute(
+            "INSERT INTO trilha_auditoria "
+            "(ocorrido_em, usuario_id, usuario_login, usuario_nome, acao, entidade, "
+            "registro_id, detalhes, resultado) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                datetime.now().astimezone().isoformat(timespec="seconds"),
+                usuario_id, login, nome_usuario, "ATUALIZACAO_CADASTRO",
+                "funcionarios", funcionario_id, detalhes, "OK",
+            ),
+        )
+        con.commit()
+    except Exception as erro:
+        try:
+            con.rollback()
+        except Exception:
+            pass
+        flash(f"Não foi possível atualizar o cadastro: {erro}", erro=True)
+        return False
+    finally:
+        con.close()
+
+    funcionario.update(depois)
+    return True
+
+
+def editar_funcionario(d):
+    """Fluxo administrativo para alterar os dados cadastrais de um colaborador."""
+    if SESSAO.get("nivel") != "admin":
+        flash("Acesso restrito ao Administrador.", erro=True)
+        return
+
+    limpar()
+    titulo_box("ALTERAR CADASTRO DE COLABORADOR")
+    _lvz()
+    fundo()
+    funcionario = sel_func(d)
+    if not funcionario:
+        return
+    if not funcionario.get("_id"):
+        flash("Cadastro sem identificador persistido. Não é possível editar com segurança.", erro=True)
+        return
+
+    limpar()
+    titulo_box("ALTERAR CADASTRO DE COLABORADOR")
+    _lvz()
+    _lnd("Colaborador", _identificacao_funcionario(funcionario))
+    _lnd("Data de admissão", funcionario.get("data_admissao") or "—")
+    _lvz()
+    _ln("  Informe os novos valores. ENTER mantém o valor atual.")
+    fundo()
+
+    nome_entrada = inp(f"Nome [{funcionario.get('nome', '')}]: ").strip()
+    nome = nome_entrada or funcionario.get("nome", "")
+    if not nome:
+        flash("O nome do colaborador não pode ficar vazio.", erro=True)
+        return
+
+    setores = ord_setores(d)
+    if not setores:
+        flash(t("nenhum_setor"), erro=True)
+        return
+    setor_atual = funcionario.get("setor", "")
+    setor = _escolher_item_cadastro("Setor", setores, setor_atual, obrigatorio=True)
+    if setor is None:
+        return
+
+    subsetores = ord_subs(d, setor)
+    if not subsetores:
+        flash("O setor selecionado não possui subsetores cadastrados.", erro=True)
+        return
+    subsetor_atual = funcionario.get("subsetor", "")
+    if setor != setor_atual or subsetor_atual not in subsetores:
+        subsetor_atual = ""
+    subsetor = _escolher_item_cadastro(
+        "Subsetor", subsetores, subsetor_atual, obrigatorio=True
+    )
+    if subsetor is None:
+        return
+
+    vinculo = _escolher_item_cadastro(
+        "Vínculo", ord_vinculos(d), funcionario.get("vinculo", ""), permitir_sem=True
+    )
+    if vinculo is None:
+        return
+
+    adm_atual = funcionario.get("data_admissao", "") or ""
+    adm_entrada = inp(
+        f"Data de admissão [{adm_atual or 'não informada'}] "
+        "(DD/MM/AAAA; ENTER mantém; '-' remove): "
+    ).strip()
+    if not adm_entrada:
+        admissao = adm_atual
+    elif adm_entrada == "-":
+        admissao = ""
+    else:
+        data_admissao = conv_data(adm_entrada)
+        if not data_admissao:
+            flash(t("admissao_inv"), erro=True)
+            return
+        admissao = data_admissao.strftime("%d/%m/%Y")
+
+    novos = {
+        "nome": nome, "setor": setor, "subsetor": subsetor,
+        "vinculo": vinculo, "data_admissao": admissao,
+    }
+    antigos = {campo: str(funcionario.get(campo, "") or "") for campo in novos}
+    alteracoes = {
+        campo: (antigos[campo], novos[campo])
+        for campo in novos if antigos[campo] != novos[campo]
+    }
+    if not alteracoes:
+        flash("Nenhuma alteração informada. O cadastro foi mantido.")
+        return
+
+    duplicado = any(
+        outro.get("_id") != funcionario.get("_id")
+        and str(outro.get("nome", "")).casefold() == nome.casefold()
+        and outro.get("setor") == setor
+        and outro.get("subsetor") == subsetor
+        for outro in d.get("funcionarios", [])
+    )
+    if duplicado:
+        flash(
+            "Já existe outro colaborador com esse nome no setor/subsetor selecionado.",
+            erro=True,
+        )
+        return
+
+    limpar()
+    titulo_box("CONFIRMAR ALTERAÇÃO DO CADASTRO")
+    _lvz()
+    rotulos = dict(_CAMPOS_FUNCIONARIO_EDICAO)
+    for campo, (antes, depois) in alteracoes.items():
+        _lnd(rotulos[campo], f"{antes or '—'}  →  {depois or '—'}")
+    _lvz()
+    _ln("  O histórico de férias será preservado.")
+    _ln("  Os lançamentos de Banco de Horas também serão preservados.")
+    if antigos["setor"] != setor or antigos["subsetor"] != subsetor:
+        _ln(
+            "  Atenção: relatórios por setor/subsetor considerarão a lotação atual "
+            "do colaborador, inclusive em consultas históricas."
+        )
+    fundo()
+
+    motivo = inp("Motivo da alteração (obrigatório, 5 a 1.000 caracteres): ").strip()
+    if not 5 <= len(motivo) <= 1000:
+        flash("Informe um motivo com pelo menos 5 e no máximo 1.000 caracteres.", erro=True)
+        return
+    confirmar = inp("Confirmar a atualização do cadastro? (S/N): ").strip()
+    if confirmar.casefold() not in ("s", "sim", "y", "yes"):
+        flash("Alteração cancelada. Nenhum dado foi modificado.")
+        return
+
+    if _gravar_edicao_funcionario(funcionario, novos, motivo):
+        flash(
+            f"Cadastro de {_identificacao_funcionario(funcionario)} atualizado. "
+            "Alteração registrada na trilha de auditoria."
+        )
+
+
+def menu_funcionarios_com_edicao(d):
+    """Menu de funcionários com opção de alteração exclusiva do administrador."""
+    while True:
+        itens = [
+            (1, t("fun_listar")), (2, t("fun_por_setor")),
+            (3, t("fun_novo")), (4, t("fun_excluir")), (5, t("fun_vinculos")),
+        ]
+        eh_admin = SESSAO.get("nivel") == "admin"
+        if eh_admin:
+            itens.append((6, "Alterar cadastro de colaborador"))
+        _render_menu(t("fun_titulo"), itens, rodape=[(0, t("voltar"))])
+        opcao = inp(t("opcao")).strip()
+        if opcao == "1":
+            listar_funcionarios(d)
+        elif opcao == "2":
+            listar_funcionarios_por_setor(d)
+        elif opcao == "3":
+            cadastrar_funcionario(d)
+        elif opcao == "4":
+            excluir_funcionario(d)
+        elif opcao == "5":
+            menu_vinculos(d)
+        elif opcao == "6" and eh_admin:
+            editar_funcionario(d)
+        elif opcao == "0":
+            break
+        else:
+            flash(t("invalido"), erro=True)
+
+
+menu_funcionarios = menu_funcionarios_com_edicao
+
 
 def main():
     """Start the interactive vacation-management application."""

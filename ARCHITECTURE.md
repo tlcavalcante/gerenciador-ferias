@@ -8,6 +8,9 @@ O SQLite é acessado por _conn() e inicializado/migrado por _init_banco(). Entre
 
 As conexões habilitam integridade referencial. A inicialização cria tabelas e índices ausentes, preservando os dados existentes.
 
+## Edição de cadastro
+A edição de colaboradores altera diretamente a linha correspondente em funcionarios, usando o identificador persistido e uma transação BEGIN IMMEDIATE. O gatilho AFTER UPDATE registra os estados anterior e posterior. Um evento adicional ATUALIZACAO_CADASTRO registra a justificativa e os campos efetivamente alterados na mesma transação. Os históricos de ferias e banco_horas permanecem vinculados ao mesmo funcionario_id; a edição não utiliza o salvamento geral dos cadastros.
+
 ## Apresentação dos gráficos
 Os gráficos são renderizados no terminal pelas funções auxiliares `_barra_grafico()`, `_linha_grafico_mensal()`, `_grafico_indicadores()` e `_barra_saldo_bh()`. As barras mensais são proporcionais à escala definida para cada visão; comparações organizacionais calculam escala comum entre os setores ou subsetores da seleção. O gráfico do Banco de Horas usa eixo divergente central, com valores negativos e positivos em lados opostos. Os indicadores se reorganizam conforme a largura disponível e as cores respeitam o modo sem ANSI.
 
