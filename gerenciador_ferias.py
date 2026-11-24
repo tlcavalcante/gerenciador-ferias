@@ -5682,6 +5682,27 @@ def _gravar_edicao_funcionario(funcionario, novos_dados, motivo):
             con.rollback()
             flash("Nome, setor e subsetor são obrigatórios.", erro=True)
             return False
+
+        if con.execute(
+            "SELECT 1 FROM setores WHERE nome=?", (depois["setor"],)
+        ).fetchone() is None:
+            con.rollback()
+            flash("O setor informado não está cadastrado.", erro=True)
+            return False
+        if con.execute(
+            "SELECT 1 FROM subsetores WHERE setor=? AND nome=?",
+            (depois["setor"], depois["subsetor"]),
+        ).fetchone() is None:
+            con.rollback()
+            flash("O subsetor informado não pertence ao setor selecionado.", erro=True)
+            return False
+        if depois["vinculo"] and con.execute(
+            "SELECT 1 FROM vinculos WHERE nome=?", (depois["vinculo"],)
+        ).fetchone() is None:
+            con.rollback()
+            flash("O vínculo informado não está cadastrado.", erro=True)
+            return False
+
         if depois["data_admissao"] and not conv_data(depois["data_admissao"]):
             con.rollback()
             flash("Data de admissão inválida.", erro=True)
